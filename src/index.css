@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/*
+  THEME — swap these to restyle the whole app.
+  4 colors + 2 fonts. Tailwind turns each into classes:
+    --color-brand   -> bg-brand, text-brand, border-brand
+    --color-brand-2 -> bg-brand-2 ...
+    --color-accent  -> bg-accent ...
+    --color-ink     -> text-ink ...
+    --font-display  -> font-display
+    --font-body     -> font-body
+  Placeholder values below are a rough "2016 sunset" guess.
+*/
+@theme {
+  --color-brand: #ff6fa8;   /* main: buttons, highlights */
+  --color-brand-2: #a78bfa; /* secondary: summary cards, chips */
+  --color-accent: #3dd6d0;  /* small pops: on-shift badge, links */
+  --color-ink: #1f1b2e;     /* body text */
+
+  --font-display: ui-rounded, "Trebuchet MS", system-ui, sans-serif;
+  --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html,
+body {
+  background: #f6f4fa;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* FullCalendar sizing tweaks for a phone-width week view */
+.fc {
+  font-size: 0.7rem;
+}
+.fc .fc-timegrid-slot {
+  height: 1.4rem;
+}
+.fc .fc-event-title {
+  font-weight: 600;
+}
