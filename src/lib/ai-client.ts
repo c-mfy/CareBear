@@ -3,8 +3,9 @@
 // to the mock functions below so the demo never breaks.
 
 import { getDevice } from '../data/patient'
-import type { Device, FieldValue, LogEntry, NoteSection, Session, Suggestion } from '../types'
+import type { AppState, Device, FieldValue, LogEntry, NoteSection, Session, Suggestion } from '../types'
 import { mockDoctorNote, reportForAi, type DoctorReport } from './doctor'
+import { mockRecentSummary, recentForAi, type RecentContext } from './recent'
 import { describeLog, formatTime, logNotes } from './format'
 
 const TIMEOUT_MS = 8000
@@ -159,4 +160,21 @@ export async function getDoctorNote(report: DoctorReport): Promise<NoteSection[]
   } catch {
     return mockDoctorNote(report)
   }
+}
+
+/** The last-12-hours summary: AI if available, otherwise the local version. `source` says which. */
+export async function getRecentSummary(
+  state: AppState,
+  ctx: RecentContext,
+): Promise<{ bullets: string[]; source: 'ai' | 'auto' }> {
+  try {
+    const data = await callAi<{ bullets?: unknown[] }>({ task: 'recent', ...recentForAi(state, ctx) })
+    const bullets = (data.bullets || []).filter((bullet): bullet is string => typeof bullet === 'string')
+    if (bullets.length > 0) {
+      return { bullets, source: 'ai' }
+    }
+  } catch {
+    // fall through to the local summary
+  }
+  return { bullets: mockRecentSummary(state, ctx), source: 'auto' }
 }

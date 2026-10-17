@@ -25,9 +25,30 @@ interface DoctorBody {
   report: Record<string, unknown>
 }
 
-type Body = SuggestBody | SummaryBody | DoctorBody
+interface RecentBody {
+  task: 'recent'
+  hours: number
+  entries: { caregiver: string; device?: string; session?: string; time: string; done: string; notes: string }[]
+  handoffs: { caregiver: string; shift: string; notes: string; flaggedAbnormal: boolean }[]
+  overdue: string[]
+  upcoming: string[]
+}
+
+type Body = SuggestBody | SummaryBody | DoctorBody | RecentBody
 
 function buildPrompt(body: Body): string {
+  if (body.task === 'recent') {
+    return [
+      `You summarize home care for a medically complex child so the next caregiver can catch up fast.`,
+      `Everything logged in the past ${body.hours} hours, by any caregiver: ${JSON.stringify(body.entries)}.`,
+      `Shift handoffs in that time: ${JSON.stringify(body.handoffs)}.`,
+      `Missed or late treatments: ${JSON.stringify(body.overdue)}. Still due today: ${JSON.stringify(body.upcoming)}.`,
+      `Write 3 to 5 short, plain bullets. Put anything missed, late, flagged abnormal, or noted first. Mention who did it when useful.`,
+      `Group routine care into one bullet instead of listing every entry. End with what is due next, if anything.`,
+      `Do not invent anything not in the data.`,
+      `Respond ONLY with JSON: {"bullets":["..."]}`,
+    ].join('\n')
+  }
   if (body.task === 'doctor') {
     return [
       `You write a care report for the pediatric doctor of a medically complex child, covering home care since the last visit.`,
@@ -74,7 +95,7 @@ export async function POST(request: Request): Promise<Response> {
   } catch {
     return Response.json({ error: 'Bad JSON' }, { status: 400 })
   }
-  if (body.task !== 'suggest' && body.task !== 'summary' && body.task !== 'doctor') {
+  if (!['suggest', 'summary', 'doctor', 'recent'].includes(body.task)) {
     return Response.json({ error: 'Unknown task' }, { status: 400 })
   }
 

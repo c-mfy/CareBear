@@ -3,7 +3,7 @@
 
 import { mockSummary } from '../lib/ai-client'
 import { toDateInput } from '../lib/format'
-import { isSameDay } from '../lib/sessions'
+import { isSameDay, timeToday } from '../lib/sessions'
 import { describeOverdue, overdueDuringShift } from '../lib/tasks'
 import type { AppState, Caregiver, FieldValue, Handoff, LogEntry } from '../types'
 import { DOOR_TAG_ID, devices } from './patient'
@@ -28,6 +28,7 @@ const LEAK_NOTE = 'Small leak at extension set, reconnected.'
 const COUGH_NOTE = 'Coughed a lot after saline, settled after 10 min.'
 
 const SHIFTS_BACK = 10 // 12-hour shifts = 5 days of history
+const LATE_CHANGEOVER = 3 // this changeover (counting back from the latest) ran over an hour late
 
 /** Small seeded random generator, so the demo data is the same after every reset. */
 function seededRandom(seed: number): () => number {
@@ -67,14 +68,32 @@ export function makeSeed(now: Date = new Date()): AppState {
   const random = seededRandom(20261017)
   const logs: LogEntry[] = []
   const shifts: { start: Date; end: Date; caregiverId: string; logs: LogEntry[] }[] = []
-  let end = lastBoundary(now)
+  const MIN = 60000
+
+  // Shifts nominally change at 7:00, but real check-outs land a little before or after, and the next
+  // caregiver checks in a few minutes later. changeovers[k] is the k-th 7:00 counting back from the latest.
+  const changeovers = Array.from({ length: SHIFTS_BACK + 1 }, (_, k) => {
+    const nominal = lastBoundary(now).getTime() - k * 12 * 3600 * 1000
+    let checkout = nominal + (-12 + Math.floor(random() * 38)) * MIN // about 6:48 to 7:25
+    if (k === LATE_CHANGEOVER) {
+      checkout += 70 * MIN // stayed late
+    }
+    checkout = Math.min(checkout, now.getTime() - MIN) // the latest one can't be in the future
+    return { checkout: new Date(checkout), checkin: new Date(checkout + (2 + Math.floor(random() * 8)) * MIN) }
+  })
+
+  let nominalEnd = lastBoundary(now)
   let dayShifts = 0
   let nightShifts = 0
 
   for (let i = 0; i < SHIFTS_BACK; i++) {
-    const start = new Date(end.getTime() - 12 * 3600 * 1000)
-    const caregiverId = caregiverFor(start)
-    const isDay = start.getHours() === 7
+    const nominalStart = new Date(nominalEnd.getTime() - 12 * 3600 * 1000)
+    const start = changeovers[i + 1].checkin
+    const end = changeovers[i].checkout
+    // Sessions due between the previous caregiver leaving and this one arriving fall to this shift
+    const coversFrom = changeovers[i + 1].checkout
+    const caregiverId = caregiverFor(nominalStart)
+    const isDay = nominalStart.getHours() === 7
     if (isDay) {
       dayShifts++
     } else {
@@ -87,7 +106,7 @@ export function makeSeed(now: Date = new Date()): AppState {
 
     const shiftLogs: LogEntry[] = []
     // the calendar days this shift touches (a day shift is one day, a night shift two)
-    const days = isSameDay(start, end) ? [start] : [start, end]
+    const days = isSameDay(coversFrom, end) ? [coversFrom] : [coversFrom, end]
     for (const day of days) {
       for (const device of devices) {
         for (const session of device.sessions) {
@@ -95,15 +114,18 @@ export function makeSeed(now: Date = new Date()): AppState {
             continue
           }
           const key = `${device.id}:${session.id}`
-          const [h, m] = session.scheduledTime.split(':').map(Number)
-          const t = new Date(day)
-          t.setHours(h, m + 1 + Math.floor(random() * 16), 0, 0) // logged a few minutes after the planned time
+          const scheduled = timeToday(session.scheduledTime, day)
+          if (scheduled < coversFrom || scheduled >= end) {
+            continue // another shift's session
+          }
+          let late = 1 + Math.floor(random() * 16) // logged a few minutes after the planned time
           if (key === 'trikafta:evening' && lateTrikaftaEvening) {
-            t.setMinutes(t.getMinutes() + 70)
+            late += 70
           }
-          if (t < start || t >= end) {
-            continue
-          }
+          // inside this shift: not before check-in, not after check-out
+          const t = new Date(
+            Math.min(Math.max(scheduled.getTime() + late * MIN, start.getTime() + 2 * MIN), end.getTime() - MIN),
+          )
           if (key === 'vest:evening' && missVestEvening) {
             continue
           }
@@ -151,7 +173,7 @@ export function makeSeed(now: Date = new Date()): AppState {
 
     logs.push(...shiftLogs)
     shifts.push({ start, end, caregiverId, logs: shiftLogs })
-    end = start
+    nominalEnd = nominalStart
   }
 
   // Handoffs after all logs exist, so overdue checks can see every day's logs (same rule as a real handoff)
@@ -179,6 +201,8 @@ export function makeSeed(now: Date = new Date()): AppState {
     logs,
     handoffs, // newest first
     // the first full day of seeded history (the oldest shift starts partway through its day)
-    lastDoctorVisit: toDateInput(new Date(end.getFullYear(), end.getMonth(), end.getDate() + 1)),
+    lastDoctorVisit: toDateInput(
+      new Date(nominalEnd.getFullYear(), nominalEnd.getMonth(), nominalEnd.getDate() + 1),
+    ),
   }
 }

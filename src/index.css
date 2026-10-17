@@ -78,6 +78,13 @@ textarea::placeholder {
   border-radius: 6px;
   cursor: pointer;
 }
+/* Sessions not done yet: gray, dashed */
+.fc .fc-planned {
+  border-style: dashed;
+}
+.fc .fc-planned .fc-event-title {
+  font-weight: 500;
+}
 .fc .fc-event-title {
   font-weight: 600;
 }
