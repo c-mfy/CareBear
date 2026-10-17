@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { CaregiverPicker } from '../components/CaregiverPicker'
 import { Header } from '../components/Header'
@@ -19,6 +20,9 @@ export function CheckInPage() {
   const next = params.get('next') || '/'
   const tagId = params.get('tag')
   const tagValid = tagId === DOOR_TAG_ID
+  // Was someone on shift when the tag was tapped? Only then is this tap a check-out.
+  // (Checked once on arrival: right after picking a name, onShift is set before we navigate away.)
+  const [tappedToCheckOut] = useState(() => !!onShift && tagValid)
 
   function handlePick(c: Caregiver) {
     if (!tagValid) {
@@ -29,7 +33,7 @@ export function CheckInPage() {
     navigate(next, { replace: true })
   }
 
-  if (onShift && tagValid) {
+  if (tappedToCheckOut) {
     return <Navigate to={`/handoff?tag=${DOOR_TAG_ID}`} replace />
   }
 
