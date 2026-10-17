@@ -1,3 +1,4 @@
+import { fromDateInput } from './format'
 import type { Device, Session } from '../types'
 
 /** Auto-pick the session for the current time. Quarterly sessions are never auto-picked. */
@@ -14,7 +15,7 @@ export function pickSession(device: Device, now: Date = new Date()): Session {
 
 /** Date the next G-tube button change is due (3 months after the last one). */
 export function quarterlyDueDate(lastChangeIso: string): Date {
-  const due = new Date(lastChangeIso)
+  const due = fromDateInput(lastChangeIso) // local date, not UTC midnight
   due.setMonth(due.getMonth() + 3)
   return due
 }

@@ -4,7 +4,7 @@
 import { mockSummary } from '../lib/ai-client'
 import { toDateInput } from '../lib/format'
 import type { AppState, Caregiver, FieldValue, Handoff, LogEntry } from '../types'
-import { devices } from './patient'
+import { DOOR_TAG_ID, devices } from './patient'
 
 export const seedCaregivers: Caregiver[] = [
   { id: 'mom', name: 'Mom', color: '#f392ba' },
@@ -101,6 +101,7 @@ export function makeSeed(now: Date = new Date()): AppState {
       overallNotes,
       logIds: unique.map((l) => l.id),
       summaryBullets: mockSummary(unique, overallNotes),
+      tagId: DOOR_TAG_ID, // seed shifts count as checked in at the door
     })
     end = start
   }

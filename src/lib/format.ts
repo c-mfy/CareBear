@@ -30,6 +30,11 @@ export function formatDate(d: Date): string {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+/** "Oct 15, 6:19 PM" — for reports that span more than a week */
+export function formatDateAndTime(iso: string): string {
+  return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
 export function formatScheduled(hhmm: string): string {
   if (!hhmm) {
     return ''

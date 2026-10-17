@@ -2,9 +2,9 @@
 // The numbers here are computed locally (always shown, never invented); the AI only writes the
 // narrative sections on top of them.
 
-import { devices, getDevice, patient } from '../data/patient'
+import { DOOR_TAG_ID, devices, getDevice, patient } from '../data/patient'
 import type { AppState, Caregiver, NoteSection } from '../types'
-import { formatDate, formatDateTime, fromDateInput, logNotes } from './format'
+import { formatDate, formatDateAndTime, fromDateInput, logNotes } from './format'
 import { quarterlyDueDate, timeToday } from './sessions'
 
 export interface AdherenceRow {
@@ -50,6 +50,8 @@ export interface DoctorReport {
   notes: NoteEntry[]
   handoffNotes: NoteEntry[]
   logsByCaregiver: { name: string; count: number }[]
+  /** Shifts in the period; verified = started from the door tag (EVV) */
+  shifts: { caregiver: string; start: string; verified: boolean }[]
   gtube: { lastChange: string; due: string; replacedInPeriod: string[] }
 }
 
@@ -128,18 +130,18 @@ export function buildDoctorReport(state: AppState, now: Date = new Date()): Doct
       .filter((f) => f.type === 'check' && log.values[f.id] !== true)
       .map((f) => f.label)
     if (items.length > 0) {
-      missed.push({ when: formatDateTime(log.timestamp), device: device.name, session: session.label, items, caregiver: who })
+      missed.push({ when: formatDateAndTime(log.timestamp), device: device.name, session: session.label, items, caregiver: who })
     }
     const text = logNotes(log)
     if (text && text.toLowerCase() !== 'no issues.') {
-      notes.push({ when: formatDateTime(log.timestamp), device: device.name, caregiver: who, text })
+      notes.push({ when: formatDateAndTime(log.timestamp), device: device.name, caregiver: who, text })
     }
   }
 
   const handoffNotes: NoteEntry[] = state.handoffs
     .filter((h) => new Date(h.end) >= since && h.overallNotes.trim())
     .map((h) => ({
-      when: formatDateTime(h.end),
+      when: formatDateAndTime(h.end),
       device: 'Shift handoff',
       caregiver: caregiverName(state.caregivers, h.caregiverId),
       text: h.overallNotes.trim(),
@@ -153,7 +155,7 @@ export function buildDoctorReport(state: AppState, now: Date = new Date()): Doct
 
   const replacedInPeriod = logs
     .filter((l) => l.sessionId === 'gtube-quarterly' && l.values.replaced === true)
-    .map((l) => formatDateTime(l.timestamp))
+    .map((l) => formatDateAndTime(l.timestamp))
 
   return {
     since,
@@ -166,8 +168,16 @@ export function buildDoctorReport(state: AppState, now: Date = new Date()): Doct
     notes,
     handoffNotes,
     logsByCaregiver: [...counts].map(([name, count]) => ({ name, count })),
+    shifts: [
+      ...state.handoffs.filter((h) => new Date(h.end) >= since),
+      ...(state.currentShift ? [state.currentShift] : []),
+    ].map((s) => ({
+      caregiver: caregiverName(state.caregivers, s.caregiverId),
+      start: s.start,
+      verified: s.tagId === DOOR_TAG_ID,
+    })),
     gtube: {
-      lastChange: formatDate(new Date(patient.lastGtubeButtonChange)),
+      lastChange: formatDate(fromDateInput(patient.lastGtubeButtonChange)),
       due: formatDate(quarterlyDueDate(patient.lastGtubeButtonChange)),
       replacedInPeriod,
     },

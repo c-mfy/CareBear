@@ -16,6 +16,7 @@ export function DoctorNotePage() {
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const [confirmingVisit, setConfirmingVisit] = useState(false)
+  const [makingPdf, setMakingPdf] = useState(false)
 
   const report = buildDoctorReport(state)
   const totals = adherenceTotals(report)
@@ -45,6 +46,20 @@ export function DoctorNotePage() {
       setTimeout(() => setCopied(false), 2000)
     } catch {
       // clipboard blocked: the note is still on screen to select by hand
+    }
+  }
+
+  async function handlePdf() {
+    if (!sections) {
+      return
+    }
+    setMakingPdf(true)
+    try {
+      // loaded on demand: jsPDF is large and only this button needs it
+      const { buildDoctorPdf, doctorPdfFilename } = await import('../lib/doctor-pdf')
+      buildDoctorPdf(report, sections).save(doctorPdfFilename())
+    } finally {
+      setMakingPdf(false)
     }
   }
 
@@ -116,8 +131,8 @@ export function DoctorNotePage() {
                 <Button variant="ghost" onClick={handleCopy}>
                   {copied ? 'Copied ✓' : 'Copy text'}
                 </Button>
-                <Button variant="ghost" onClick={() => window.print()}>
-                  Print / PDF
+                <Button variant="ghost" onClick={handlePdf} disabled={makingPdf}>
+                  {makingPdf ? 'Making PDF…' : 'Download PDF'}
                 </Button>
               </div>
               <Button variant="ghost" onClick={handleGenerate} disabled={loading} className="print:hidden">
