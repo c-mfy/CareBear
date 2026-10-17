@@ -76,15 +76,37 @@ export interface OverdueItem {
   minutesLate: number | null
 }
 
+export interface Occurrence {
+  deviceId: string
+  sessionId: string
+  title: string
+  label: string
+  /** When it was due */
+  scheduled: Date
+  /** The log for it (same day), if any */
+  log: LogEntry | null
+  /** Minutes from scheduled to logged (negative = early); null = not logged */
+  offsetMinutes: number | null
+  status: 'on-time' | 'late' | 'missed'
+}
+
 /**
- * Daily sessions that went overdue during a shift: their grace deadline fell between the shift start and
- * now, and they were either never logged that day or logged after the deadline.
+ * Every daily session in a time range, and how it went (on time = logged by scheduled + OVERDUE_GRACE_MINUTES).
+ * Used for shift flags and the doctor's-note charts, so both count the same way.
+ * - by 'deadline' (charts): sessions whose grace deadline falls in [from, to], so nothing is "missed" before it's due
+ * - by 'scheduled' (shifts): sessions due in [from, to); anything not logged by then is missed, because the
+ *   caregiver whose shift it was has left
  */
-export function overdueDuringShift(logs: LogEntry[], shiftStart: Date, now: Date = new Date()): OverdueItem[] {
-  const items: OverdueItem[] = []
-  const day = new Date(shiftStart)
+export function sessionOccurrences(
+  logs: LogEntry[],
+  from: Date,
+  to: Date,
+  by: 'deadline' | 'scheduled' = 'deadline',
+): Occurrence[] {
+  const items: Occurrence[] = []
+  const day = new Date(from)
   day.setHours(0, 0, 0, 0)
-  for (; day <= now; day.setDate(day.getDate() + 1)) {
+  for (; day <= to; day.setDate(day.getDate() + 1)) {
     for (const device of devices) {
       for (const session of device.sessions) {
         if (session.recurrence !== 'daily' || !session.scheduledTime) {
@@ -92,24 +114,46 @@ export function overdueDuringShift(logs: LogEntry[], shiftStart: Date, now: Date
         }
         const scheduled = timeToday(session.scheduledTime, day)
         const deadline = new Date(scheduled.getTime() + OVERDUE_GRACE_MINUTES * 60000)
-        if (deadline < shiftStart || deadline > now) {
+        if (by === 'deadline' && (deadline < from || deadline > to)) {
           continue
         }
-        const log = logs.find(
-          (l) => l.deviceId === device.id && l.sessionId === session.id && isSameDay(new Date(l.timestamp), scheduled),
-        )
-        if (log && new Date(log.timestamp) <= deadline) {
-          continue // on time
+        if (by === 'scheduled' && (scheduled < from || scheduled >= to)) {
+          continue
         }
-        let minutesLate: number | null = null
+        const log =
+          logs.find(
+            (l) => l.deviceId === device.id && l.sessionId === session.id && isSameDay(new Date(l.timestamp), scheduled),
+          ) || null
+        let offsetMinutes: number | null = null
+        let status: Occurrence['status'] = 'missed'
         if (log) {
-          minutesLate = Math.floor((new Date(log.timestamp).getTime() - scheduled.getTime()) / 60000)
+          offsetMinutes = Math.floor((new Date(log.timestamp).getTime() - scheduled.getTime()) / 60000)
+          status = new Date(log.timestamp) <= deadline ? 'on-time' : 'late'
         }
-        items.push({ title: device.name, label: session.label, scheduled, minutesLate })
+        items.push({
+          deviceId: device.id,
+          sessionId: session.id,
+          title: device.name,
+          label: session.label,
+          scheduled,
+          log,
+          offsetMinutes,
+          status,
+        })
       }
     }
   }
   return items.sort((a, b) => a.scheduled.getTime() - b.scheduled.getTime())
+}
+
+/**
+ * Daily sessions due during a shift (shift start to now/checkout) that were either not logged
+ * or logged after the grace deadline.
+ */
+export function overdueDuringShift(logs: LogEntry[], shiftStart: Date, now: Date = new Date()): OverdueItem[] {
+  return sessionOccurrences(logs, shiftStart, now, 'scheduled')
+    .filter((o) => o.status !== 'on-time')
+    .map((o) => ({ title: o.title, label: o.label, scheduled: o.scheduled, minutesLate: o.offsetMinutes }))
 }
 
 /** "Vest · Morning session: not done (due 7:15 AM)" / "...: logged 1 hr 10 min late" */

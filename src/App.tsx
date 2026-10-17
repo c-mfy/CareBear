@@ -5,6 +5,7 @@ import { DoctorNotePage } from './pages/DoctorNotePage'
 import { HandoffPage } from './pages/HandoffPage'
 import { HomePage } from './pages/HomePage'
 import { LogPage } from './pages/LogPage'
+import { TimesheetPage } from './pages/TimesheetPage'
 
 // Routes double as NFC tag URLs:
 //   /checkin?tag=<DOOR_TAG_ID>  <- door tag: checks in, or if someone is on shift, opens their handoff to check out (EVV)
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="/log/:deviceId" element={<LogPage />} />
           <Route path="/handoff" element={<HandoffPage />} />
           <Route path="/doctor-note" element={<DoctorNotePage />} />
+          <Route path="/timesheet" element={<TimesheetPage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>
       </BrowserRouter>

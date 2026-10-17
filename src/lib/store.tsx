@@ -7,7 +7,7 @@ import { loadState, saveState } from './storage'
 interface Store {
   state: AppState
   onShift: Caregiver | null
-  addCaregiver: (name: string) => Caregiver
+  addCaregiver: (name: string, role: 'staff' | 'family') => Caregiver
   checkIn: (caregiverId: string, tagId: string) => void
   addLog: (deviceId: string, sessionId: string, values: Record<string, FieldValue>) => void
   completeHandoff: (
@@ -41,9 +41,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     onShift = state.caregivers.find((c) => c.id === id) || null
   }
 
-  function addCaregiver(name: string): Caregiver {
+  function addCaregiver(name: string, role: 'staff' | 'family'): Caregiver {
     const color = caregiverColors[state.caregivers.length % caregiverColors.length]
-    const caregiver: Caregiver = { id: newId('cg'), name: name.trim(), color }
+    const caregiver: Caregiver = { id: newId('cg'), name: name.trim(), color, role }
     setState((s) => ({ ...s, caregivers: [...s.caregivers, caregiver] }))
     return caregiver
   }

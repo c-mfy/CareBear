@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { Header } from '../components/Header'
 import { BulletList } from '../components/SummaryCard'
+import { TrendCharts } from '../components/TrendCharts'
 import { Button, Card, Page, Section, Tag } from '../components/ui'
 import { patient } from '../data/patient'
 import { getDoctorNote } from '../lib/ai-client'
+import { chartSpecs, renderChartImages } from '../lib/charts'
 import { adherenceTotals, buildDoctorReport, noteAsText } from '../lib/doctor'
 import { formatDate, toDateInput } from '../lib/format'
 import { useStore } from '../lib/store'
+import { buildTrends } from '../lib/trends'
 import type { NoteSection } from '../types'
 
 /** Doctor's note: a detailed report of everything logged since the last doctor's visit. */
@@ -19,6 +22,7 @@ export function DoctorNotePage() {
   const [makingPdf, setMakingPdf] = useState(false)
 
   const report = buildDoctorReport(state)
+  const specs = chartSpecs(buildTrends(state))
   const totals = adherenceTotals(report)
   const today = toDateInput(new Date())
 
@@ -57,7 +61,13 @@ export function DoctorNotePage() {
     try {
       // loaded on demand: jsPDF is large and only this button needs it
       const { buildDoctorPdf, doctorPdfFilename } = await import('../lib/doctor-pdf')
-      buildDoctorPdf(report, sections).save(doctorPdfFilename())
+      let charts: Awaited<ReturnType<typeof renderChartImages>> = []
+      try {
+        charts = await renderChartImages(specs)
+      } catch {
+        // charts are a bonus: still make the PDF without them
+      }
+      buildDoctorPdf(report, sections, charts).save(doctorPdfFilename())
     } finally {
       setMakingPdf(false)
     }
@@ -143,6 +153,10 @@ export function DoctorNotePage() {
         </div>
 
         {/* The numbers the note is based on, always shown */}
+        <Section title="Trends">
+          <TrendCharts specs={specs} />
+        </Section>
+
         <Section title="Treatment log">
           <Card className="overflow-x-auto p-0">
             <table className="w-full text-left text-[13px]">

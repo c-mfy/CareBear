@@ -42,6 +42,8 @@ export interface Caregiver {
   id: string
   name: string
   color: string // calendar + chip color
+  /** 'staff' = paid nurse/aide (on the timesheet); 'family' = unpaid. Missing on old saves = family. */
+  role?: 'staff' | 'family'
 }
 
 export type FieldValue = boolean | number | string

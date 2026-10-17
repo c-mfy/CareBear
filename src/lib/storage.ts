@@ -1,5 +1,5 @@
 // All app data lives in this browser's localStorage (single-phone demo).
-import { makeSeed } from '../data/seed'
+import { makeSeed, seedCaregivers } from '../data/seed'
 import type { AppState } from '../types'
 
 const KEY = 'care-handoff-v1'
@@ -12,6 +12,10 @@ export function loadState(): AppState {
       if (!saved.lastDoctorVisit) {
         // saved before the doctor's note existed
         saved.lastDoctorVisit = makeSeed().lastDoctorVisit
+      }
+      for (const c of saved.caregivers) {
+        // saved before caregiver roles existed: seed caregivers get their seed role
+        c.role ??= seedCaregivers.find((s) => s.id === c.id)?.role
       }
       return saved
     }

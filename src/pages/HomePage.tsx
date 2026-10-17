@@ -108,17 +108,23 @@ export function HomePage() {
 
         <Section
           title="Care Team"
-          right={<span className="text-xs text-cocoa">New caregivers join at the door tag</span>}
+          right={
+            <Link to="/timesheet" className="text-xs font-semibold text-teal">
+              Timesheet ›
+            </Link>
+          }
         >
           <Card className="space-y-1 py-2">
             {state.caregivers.map((c) => (
               <div key={c.id} className="flex min-h-10 items-center gap-2.5 text-sm">
                 <Dot color={c.color} />
                 <span className="flex-1">{c.name}</span>
+                {c.role === 'staff' && <span className="text-xs text-cocoa">Paid staff</span>}
                 {state.currentShift?.caregiverId === c.id && <Tag className="bg-mist text-teal">On shift</Tag>}
               </div>
             ))}
           </Card>
+          <p className="mt-1.5 px-0.5 text-xs text-cocoa">New caregivers join at the door tag.</p>
         </Section>
 
         <button onClick={handleReset} className="mt-6 min-h-12 w-full text-xs text-cocoa underline">

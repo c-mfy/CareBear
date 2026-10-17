@@ -22,7 +22,8 @@ Stack: React + Vite + TypeScript + Tailwind v4, FullCalendar (week view), one Ve
 |---|---|---|
 | `/` | Home: summary, tasks, calendar, history, team | Anyone |
 | `/checkin?tag=<DOOR_TAG_ID>` | "Who's logging?" picker; add a caregiver by name. Without the tag id it only says "tap the door tag" (EVV) | **Door tag** |
-| `/doctor-note` | Detailed report of everything since the last doctor's visit, with AI write-up, copy, and print | Home header "Doctor's note" |
+| `/doctor-note` | Report since the last doctor's visit: trend charts, AI write-up, copy, and a PDF with charts and appendices | Home header "Doctor's note" |
+| `/timesheet` | Weekly hours per caregiver from door-tag check-in/out (EVV), paid staff or everyone, CSV and PDF export | Home "Care Team" → Timesheet |
 | `/log/vest` | Log vest session | **Vest tag** |
 | `/log/nebulizer` | Log nebulizer session | **Nebulizer tag** |
 | `/log/feeding-pump` | Log feeding pump session | **Feeding pump tag** |
@@ -55,8 +56,8 @@ Rules:
 | Last G-tube button change date (`2026-08-01`) | `src/data/patient.ts` → `lastGtubeButtonChange` |
 | Caregiver colors for new caregivers | `src/data/patient.ts` → `caregiverColors` |
 | Seed caregivers (Mom, Nurse Alex, Dad) | `src/data/seed.ts` → `seedCaregivers` |
-| Seed history: 3 days of 12-hr shifts (7a–7p Nurse Alex, 7p–7a Mom) | `src/data/seed.ts` → `makeSeed` |
-| Seed values and sample notes | `src/data/seed.ts` → `typicalNumbers`, `sampleNotes` |
+| Seed history: 5 days of 12-hr shifts (7a–7p Nurse Alex on weekdays / Dad on weekends, 7p–7a Mom) | `src/data/seed.ts` → `makeSeed` |
+| Seed values, notes, and scripted events (one missed vest session, one late Trikafta dose, two pump-alarm nights) | `src/data/seed.ts` → `prescribed`, `vestMinutes`, `makeSeed` |
 | Mock AI text, used when the API fails | `src/lib/ai.ts` → `mockSuggestions`, `mockSummary` |
 | AI prompts | `api/ai.ts` → `buildPrompt` |
 
