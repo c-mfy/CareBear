@@ -58,6 +58,12 @@ export function HomePage() {
               {patient.age} yrs · {condition}
             </p>
           </div>
+          <Link
+            to="/emergency"
+            className="flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-[#d6336c] px-4 text-sm font-bold text-white"
+          >
+            Emergency
+          </Link>
         </Card>
 
         <div className="mt-2.5">

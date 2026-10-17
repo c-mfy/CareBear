@@ -1,7 +1,9 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { useLayoutEffect } from 'react'
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { StoreProvider } from './lib/store'
 import { CheckInPage } from './pages/CheckInPage'
 import { DoctorNotePage } from './pages/DoctorNotePage'
+import { EmergencyPage } from './pages/EmergencyPage'
 import { HandoffPage } from './pages/HandoffPage'
 import { HomePage } from './pages/HomePage'
 import { LogPage } from './pages/LogPage'
@@ -14,6 +16,7 @@ export default function App() {
   return (
     <StoreProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/checkin" element={<CheckInPage />} />
@@ -21,9 +24,19 @@ export default function App() {
           <Route path="/handoff" element={<HandoffPage />} />
           <Route path="/doctor-note" element={<DoctorNotePage />} />
           <Route path="/timesheet" element={<TimesheetPage />} />
+          <Route path="/emergency" element={<EmergencyPage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>
       </BrowserRouter>
     </StoreProvider>
   )
+}
+
+/** Every page change starts at the top (otherwise the browser keeps the previous page's scroll position). */
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
 }

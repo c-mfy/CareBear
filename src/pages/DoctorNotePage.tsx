@@ -86,9 +86,7 @@ export function DoctorNotePage() {
 
   return (
     <Page>
-      <div className="print:hidden">
-        <Header title="Doctor's note" back />
-      </div>
+      <Header title="Doctor's note" back />
       <main className="px-4 pt-2">
         {/* Period */}
         <Card>
