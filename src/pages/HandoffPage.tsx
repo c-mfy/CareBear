@@ -14,6 +14,8 @@ export function HandoffPage() {
   const navigate = useNavigate()
   const [overallNotes, setOverallNotes] = useState('')
   const [bullets, setBullets] = useState<string[] | null>(null)
+  const [editingSummary, setEditingSummary] = useState(false)
+  const [draftSummary, setDraftSummary] = useState('')
   const [loading, setLoading] = useState(false)
 
   if (!onShift) {
@@ -39,7 +41,28 @@ export function HandoffPage() {
     setLoading(true)
     const result = await getShiftSummary(caregiverName, logs, overallNotes)
     setBullets(result)
+    setEditingSummary(false)
     setLoading(false)
+  }
+
+  function handleEdit() {
+    if (!bullets) {
+      return
+    }
+    setDraftSummary(bullets.join('\n'))
+    setEditingSummary(true)
+  }
+
+  function handleSaveEdits() {
+    const editedBullets = draftSummary
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+    if (editedBullets.length === 0) {
+      return
+    }
+    setBullets(editedBullets)
+    setEditingSummary(false)
   }
 
   function handleConfirm() {
@@ -101,12 +124,43 @@ export function HandoffPage() {
             <>
               <Card className="bg-brand-2/15">
                 <h3 className="mb-2 font-display font-bold">Summary for next caregiver</h3>
-                <BulletList bullets={bullets} />
+                {editingSummary ? (
+                  <>
+                    <textarea
+                      value={draftSummary}
+                      onChange={(e) => setDraftSummary(e.target.value)}
+                      aria-label="Edit summary"
+                      rows={Math.max(4, bullets.length)}
+                      className="w-full rounded-xl border border-gray-300 bg-white p-3 text-sm"
+                    />
+                    <p className="mt-2 text-xs text-gray-500">Use one line for each summary bullet.</p>
+                  </>
+                ) : (
+                  <BulletList bullets={bullets} />
+                )}
               </Card>
-              <Button onClick={handleConfirm}>Hand off & check out</Button>
-              <Button variant="ghost" onClick={handleGenerate} disabled={loading}>
-                Regenerate
-              </Button>
+              {editingSummary ? (
+                <div className="flex gap-3">
+                  <Button onClick={handleSaveEdits} disabled={!draftSummary.trim()}>
+                    Save edits
+                  </Button>
+                  <Button variant="ghost" onClick={() => setEditingSummary(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Button onClick={handleConfirm}>Hand off & check out</Button>
+                  <div className="flex gap-3">
+                    <Button variant="ghost" onClick={handleEdit}>
+                      Edit summary
+                    </Button>
+                    <Button variant="ghost" onClick={handleGenerate} disabled={loading}>
+                      Regenerate
+                    </Button>
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
