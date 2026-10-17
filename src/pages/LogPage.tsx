@@ -25,6 +25,10 @@ export function LogPage() {
     if (fromUrl) {
       return fromUrl
     }
+    const fromTask = location.state?.sessionId
+    if (typeof fromTask === 'string') {
+      return fromTask
+    }
     if (device) {
       return pickSession(device).id
     }

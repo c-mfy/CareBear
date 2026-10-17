@@ -6,8 +6,19 @@ export interface Task {
   deviceId: string
   sessionId: string
   title: string
+  group: 'morning' | 'evening' | 'bedtime'
   time: string
   done: boolean
+}
+
+function taskGroup(sessionId: string): Task['group'] {
+  if (sessionId === 'bedtime-start') {
+    return 'bedtime'
+  }
+  if (sessionId.includes('evening')) {
+    return 'evening'
+  }
+  return 'morning'
 }
 
 /** Today's to-do list: every daily session, checked off if it was logged today. */
@@ -27,12 +38,14 @@ export function buildTodayTasks(logs: LogEntry[], now: Date = new Date()): Task[
       tasks.push({
         deviceId: device.id,
         sessionId: session.id,
-        title: `${device.name} — ${session.label}`,
+        title: device.name,
+        group: taskGroup(session.id),
         time: session.scheduledTime || '',
         done,
       })
     }
   }
-  tasks.sort((a, b) => a.time.localeCompare(b.time))
+  const groupOrder: Record<Task['group'], number> = { morning: 0, evening: 1, bedtime: 2 }
+  tasks.sort((a, b) => groupOrder[a.group] - groupOrder[b.group] || a.time.localeCompare(b.time))
   return tasks
 }

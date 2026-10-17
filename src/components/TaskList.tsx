@@ -12,31 +12,49 @@ import { Card } from './ui'
 export function TaskList() {
   const { state } = useStore()
   const tasks = buildTodayTasks(state.logs)
+  const groups = [
+    { id: 'morning' as const, label: 'Morning' },
+    { id: 'evening' as const, label: 'Evening' },
+    { id: 'bedtime' as const, label: 'Bedtime' },
+  ]
 
   return (
     <Card className="p-2">
-      <ul>
-        {tasks.map((t) => (
-          <li key={`${t.deviceId}-${t.sessionId}`}>
-            <Link
-              to={`/log/${t.deviceId}?session=${t.sessionId}`}
-              className="flex min-h-12 items-center gap-3 rounded-xl px-2 active:bg-gray-100"
-            >
-              <span
-                className={cx(
-                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 text-sm text-white',
-                  t.done && 'border-brand bg-brand',
-                  !t.done && 'border-gray-300',
-                )}
-              >
-                {t.done && '✓'}
-              </span>
-              <span className={cx('flex-1 text-sm', t.done && 'text-gray-400 line-through')}>{t.title}</span>
-              <span className="text-xs text-gray-500">{formatScheduled(t.time)}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <div className="space-y-4">
+        {groups.map((group) => {
+          const groupTasks = tasks.filter((task) => task.group === group.id)
+          return (
+            <section key={group.id}>
+              <h3 className="px-2 text-sm font-bold">{group.label}</h3>
+              <ul>
+                {groupTasks.map((t) => (
+                  <li key={`${t.deviceId}-${t.sessionId}`}>
+                    <Link
+                      to={`/log/${t.deviceId}`}
+                      state={{ sessionId: t.sessionId }}
+                      className="flex min-h-12 items-center gap-3 rounded-xl px-2 active:bg-gray-100"
+                    >
+                      <span
+                        className={cx(
+                          'flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 text-sm text-white',
+                          t.done && 'border-brand bg-brand',
+                          !t.done && 'border-gray-300',
+                        )}
+                      >
+                        {t.done && '✓'}
+                      </span>
+                      <span className={cx('flex-1 text-sm', t.done && 'text-gray-400 line-through')}>
+                        {t.title}
+                      </span>
+                      <span className="text-xs text-gray-500">{formatScheduled(t.time)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        })}
+      </div>
     </Card>
   )
 }
