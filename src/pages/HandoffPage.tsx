@@ -9,13 +9,15 @@ import { getShiftSummary } from '../lib/ai-client'
 import { cx } from '../lib/cx'
 import { describeLog, formatTime, logNotes } from '../lib/format'
 import { useStore } from '../lib/store'
+import { describeOverdue, overdueDuringShift } from '../lib/tasks'
 
 /** End-of-shift handoff: review logs, add overall notes, generate summary, check out. */
 export function HandoffPage() {
   const { state, onShift, shiftLogs, completeHandoff } = useStore()
   const navigate = useNavigate()
   const [overallNotes, setOverallNotes] = useState('')
-  const [flagged, setFlagged] = useState(false)
+  // null = caregiver hasn't touched the flag, so it follows the overdue check
+  const [flagChoice, setFlagChoice] = useState<boolean | null>(null)
   const [bullets, setBullets] = useState<string[] | null>(null)
   const [editingSummary, setEditingSummary] = useState(false)
   const [draftSummary, setDraftSummary] = useState('')
@@ -40,6 +42,9 @@ export function HandoffPage() {
     onShiftStart = state.currentShift.start
   }
   const logs = shiftLogs().sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+  const overdueReasons = overdueDuringShift(state.logs, new Date(onShiftStart)).map(describeOverdue)
+  const autoFlagged = overdueReasons.length > 0
+  const flagged = flagChoice ?? autoFlagged
 
   async function handleGenerate() {
     setLoading(true)
@@ -73,7 +78,7 @@ export function HandoffPage() {
     if (!bullets) {
       return
     }
-    completeHandoff(overallNotes, bullets, flagged)
+    completeHandoff(overallNotes, bullets, flagged, overdueReasons)
     navigate('/')
   }
 
@@ -179,7 +184,7 @@ export function HandoffPage() {
             className="w-full rounded-2xl bg-white p-4 text-sm outline-none"
           />
           <button
-            onClick={() => setFlagged(!flagged)}
+            onClick={() => setFlagChoice(!flagged)}
             aria-pressed={flagged}
             className={cx(
               'mt-2 flex min-h-12 w-full items-center gap-3 rounded-2xl px-4 text-left text-sm font-semibold',
@@ -191,8 +196,20 @@ export function HandoffPage() {
             <span className="flex-1">
               {flagged ? 'Flagged: something abnormal this shift' : 'Flag something abnormal this shift'}
             </span>
-            <span className="text-xs font-medium">{flagged ? 'Undo' : 'Tap to flag'}</span>
+            <span className="text-xs font-medium">{flagged ? 'Unflag' : 'Tap to flag'}</span>
           </button>
+          {autoFlagged && (
+            <div className="mt-2 rounded-2xl bg-white px-4 py-3 text-[13px]">
+              <p className="font-semibold text-rose">
+                {flagged ? 'Auto-flagged: overdue this shift' : 'Unflagged, but these were overdue this shift'}
+              </p>
+              <ul className="mt-1 space-y-0.5 text-cocoa">
+                {overdueReasons.map((r) => (
+                  <li key={r}>• {r}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </Section>
 
         <div className="mt-4 space-y-3">

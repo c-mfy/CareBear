@@ -130,6 +130,7 @@ export const devices: Device[] = [
     id: 'trikafta',
     name: 'Trikafta',
     model: 'Pill bottle',
+    medication: true,
     sessions: [
       {
         id: 'morning',

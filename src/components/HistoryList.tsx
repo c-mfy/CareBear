@@ -49,6 +49,14 @@ export function HistoryList() {
             </button>
             {openId === h.id && (
               <div className="border-t border-lilac px-4 py-3">
+                {h.flagReasons && h.flagReasons.length > 0 && (
+                  <div className="mb-2 text-xs text-rose">
+                    <p className="font-semibold">Flagged: overdue this shift</p>
+                    {h.flagReasons.map((r) => (
+                      <p key={r}>• {r}</p>
+                    ))}
+                  </div>
+                )}
                 <BulletList bullets={h.summaryBullets} />
               </div>
             )}

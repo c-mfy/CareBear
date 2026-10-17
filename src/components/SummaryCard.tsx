@@ -36,7 +36,14 @@ function HandoffCard({ handoff }: { handoff: Handoff }) {
         {formatDateTime(handoff.start)} – {formatDateTime(handoff.end)}
       </p>
       {handoff.flagged && (
-        <p className="mb-2 text-xs font-semibold text-rose">Flagged as abnormal by {name}</p>
+        <div className="mb-2 text-xs text-rose">
+          <p className="font-semibold">
+            {handoff.flagReasons?.length ? 'Flagged: overdue this shift' : `Flagged as abnormal by ${name}`}
+          </p>
+          {handoff.flagReasons?.map((r) => (
+            <p key={r}>• {r}</p>
+          ))}
+        </div>
       )}
       <BulletList bullets={handoff.summaryBullets} />
     </Card>

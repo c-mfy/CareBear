@@ -24,6 +24,8 @@ export interface Device {
   id: string // also the NFC URL slug: /log/<id>
   name: string
   model: string
+  /** Medication: a second dose too soon is dangerous, so logging it again needs confirmation */
+  medication?: boolean
   sessions: Session[]
 }
 
@@ -70,8 +72,10 @@ export interface Handoff {
   summaryBullets: string[]
   /** EVV: door tag used to check in for this shift (missing on seed/older data) */
   tagId?: string
-  /** Outgoing caregiver marked something abnormal this shift */
+  /** Abnormal shift: auto-set when something went overdue, caregiver can also set/unset it */
   flagged?: boolean
+  /** Why it was auto-flagged, e.g. "Vest · Morning session: not done (due 7:15 AM)" */
+  flagReasons?: string[]
 }
 
 export interface AppState {

@@ -7,13 +7,17 @@ import { TaskList } from '../components/TaskList'
 import { BottomBar, Card, Dot, Page, Section, Tag } from '../components/ui'
 import { patient } from '../data/patient'
 import { useStore } from '../lib/store'
+import { formatMinutes } from '../lib/format'
 import { buildTodayTasks } from '../lib/tasks'
+import { useNow } from '../lib/useNow'
 
 /** Single scrolling page, laid out like the low-fi home screen. */
 export function HomePage() {
   const { state, onShift, resetDemo } = useStore()
-  const tasks = buildTodayTasks(state.logs)
+  const now = useNow() // re-renders every minute so tasks turn overdue on their own
+  const tasks = buildTodayTasks(state.logs, now)
   const doneCount = tasks.filter((t) => t.done).length
+  const overdue = tasks.filter((t) => t.overdueMinutes > 0).sort((a, b) => b.overdueMinutes - a.overdueMinutes)
   const condition = patient.summary.split('.')[0] // e.g. "Cystic fibrosis"
 
   function handleReset() {
@@ -68,7 +72,30 @@ export function HomePage() {
             </span>
           }
         >
-          <TaskList />
+          {overdue.length > 0 && (
+            <div role="alert" className="mb-2 rounded-[18px] bg-rose px-4 py-3 text-white">
+              <p className="text-sm font-bold">
+                ⚠ {overdue.length} overdue {overdue.length === 1 ? 'task' : 'tasks'}
+              </p>
+              <ul className="mt-1.5 space-y-1">
+                {overdue.map((t) => (
+                  <li key={`${t.deviceId}-${t.sessionId}`}>
+                    <Link
+                      to={`/log/${t.deviceId}`}
+                      state={{ sessionId: t.sessionId }}
+                      className="flex min-h-9 items-center justify-between gap-2 text-[13px]"
+                    >
+                      <span className="font-semibold">
+                        {t.title} · {t.label}
+                      </span>
+                      <span className="shrink-0 text-xs">{formatMinutes(t.overdueMinutes)} late ›</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <TaskList now={now} />
         </Section>
 
         <Section title="Calendar">

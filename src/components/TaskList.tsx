@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { cx } from '../lib/cx'
-import { formatScheduled, formatTime } from '../lib/format'
+import { formatMinutes, formatScheduled, formatTime } from '../lib/format'
 import { isSameDay } from '../lib/sessions'
 import { useStore } from '../lib/store'
 import { buildTodayTasks } from '../lib/tasks'
@@ -11,15 +11,14 @@ import { Tag } from './ui'
  * Today's to-do list. Tasks are checked off by logging (NFC tap), not by tapping the box.
  * Each row also links to its log page so you can test without an NFC tag.
  */
-export function TaskList() {
+export function TaskList({ now }: { now: Date }) {
   const { state } = useStore()
-  const tasks = buildTodayTasks(state.logs)
+  const tasks = buildTodayTasks(state.logs, now)
   const groups = [
     { id: 'morning' as const, label: 'Morning' },
     { id: 'evening' as const, label: 'Evening' },
     { id: 'bedtime' as const, label: 'Bedtime' },
   ]
-  const now = new Date()
 
   /** Time today's log for this task was made, e.g. "6:49 AM" */
   function doneAt(deviceId: string, sessionId: string): string {
@@ -49,6 +48,8 @@ export function TaskList() {
                 let status = <Tag className="bg-aqua text-brown">Due {formatScheduled(t.time)}</Tag>
                 if (t.done) {
                   status = <span className="text-xs text-cocoa">{doneAt(t.deviceId, t.sessionId)}</span>
+                } else if (t.overdueMinutes > 0) {
+                  status = <Tag className="bg-rose text-white">Overdue {formatMinutes(t.overdueMinutes)}</Tag>
                 }
                 return (
                   <li key={`${t.deviceId}-${t.sessionId}`} className="border-t border-lilac first:border-t-0">
@@ -61,13 +62,20 @@ export function TaskList() {
                         className={cx(
                           'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 text-[11px] text-white',
                           t.done && 'border-teal bg-teal',
-                          !t.done && 'border-sea',
+                          !t.done && t.overdueMinutes === 0 && 'border-sea',
+                          t.overdueMinutes > 0 && 'border-rose',
                         )}
                       >
                         {t.done && '✓'}
                       </span>
                       <DeviceIcon deviceId={t.deviceId} size={26} />
-                      <span className={cx('flex-1 text-[13px]', t.done && 'text-cocoa line-through')}>
+                      <span
+                        className={cx(
+                          'flex-1 text-[13px]',
+                          t.done && 'text-cocoa line-through',
+                          t.overdueMinutes > 0 && 'font-semibold',
+                        )}
+                      >
                         {t.title}
                       </span>
                       {status}

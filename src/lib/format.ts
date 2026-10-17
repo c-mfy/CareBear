@@ -35,6 +35,19 @@ export function formatDateAndTime(iso: string): string {
   return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
+/** 45 -> "45 min", 75 -> "1 hr 15 min", 120 -> "2 hr" */
+export function formatMinutes(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (h === 0) {
+    return `${m} min`
+  }
+  if (m === 0) {
+    return `${h} hr`
+  }
+  return `${h} hr ${m} min`
+}
+
 export function formatScheduled(hhmm: string): string {
   if (!hhmm) {
     return ''

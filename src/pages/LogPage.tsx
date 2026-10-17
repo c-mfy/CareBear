@@ -8,7 +8,8 @@ import { getDevice, patient } from '../data/patient'
 import { getSuggestions } from '../lib/ai-client'
 import { cx } from '../lib/cx'
 import { pickSession, quarterlyDueDate } from '../lib/sessions'
-import { formatScheduled, formatTime } from '../lib/format'
+import { findDoseConflict, type DoseConflict } from '../lib/dose-check'
+import { describeLog, formatMinutes, formatScheduled, formatTime } from '../lib/format'
 import { useStore } from '../lib/store'
 import type { FieldValue, Suggestion } from '../types'
 
@@ -39,6 +40,8 @@ export function LogPage() {
   const [values, setValues] = useState<Record<string, FieldValue>>({})
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  // Medication only: caregiver confirmed this is a separate dose despite the warning
+  const [repeatConfirmed, setRepeatConfirmed] = useState(false)
 
   const session = device?.sessions.find((s) => s.id === sessionId)
 
@@ -49,6 +52,7 @@ export function LogPage() {
     }
     setValues({})
     setSuggestions([])
+    setRepeatConfirmed(false)
     setLoadingSuggestions(true)
     const recent = state.logs
       .filter((l) => l.deviceId === device.id && l.sessionId === session.id)
@@ -81,8 +85,11 @@ export function LogPage() {
     return <Navigate to={`/checkin?next=${next}`} replace />
   }
 
+  const conflict = device && session ? findDoseConflict(device, session, state.logs) : null
+  const blocked = !!conflict && !!device.medication && !repeatConfirmed
+
   function handleComplete() {
-    if (!device || !session) {
+    if (!device || !session || blocked) {
       return
     }
     addLog(device.id, session.id, values)
@@ -132,6 +139,15 @@ export function LogPage() {
           </span>
         </div>
 
+        {conflict && (
+          <DoseWarning
+            conflict={conflict}
+            medication={!!device.medication}
+            confirmed={repeatConfirmed}
+            onConfirm={() => setRepeatConfirmed(true)}
+          />
+        )}
+
         {session?.recurrence === 'quarterly' && (
           <p className="mt-2 text-xs text-cocoa">
             Due by {quarterlyDueDate(patient.lastGtubeButtonChange).toLocaleDateString()}
@@ -172,12 +188,64 @@ export function LogPage() {
       </main>
 
       {session && (
-        <BottomBar className="bg-teal p-0 pl-0">
-          <button onClick={handleComplete} className="min-h-14 w-full rounded-full text-[15px]">
-            Mark as complete · {formatTime(new Date().toISOString())}
+        <BottomBar className={cx('p-0 pl-0', blocked ? 'bg-rose' : 'bg-teal')}>
+          <button onClick={handleComplete} disabled={blocked} className="min-h-14 w-full rounded-full text-[15px]">
+            {blocked ? 'Check the dose warning above' : `Mark as complete · ${formatTime(new Date().toISOString())}`}
           </button>
         </BottomBar>
       )}
     </Page>
+  )
+}
+
+/** Shown when this was already logged. Medication blocks logging until the caregiver confirms. */
+function DoseWarning({
+  conflict,
+  medication,
+  confirmed,
+  onConfirm,
+}: {
+  conflict: DoseConflict
+  medication: boolean
+  confirmed: boolean
+  onConfirm: () => void
+}) {
+  const { state } = useStore()
+  const { log, reason } = conflict
+  const device = getDevice(log.deviceId)
+  const session = device?.sessions.find((s) => s.id === log.sessionId)
+  const who = state.caregivers.find((c) => c.id === log.caregiverId)?.name || 'Unknown'
+  const ago = formatMinutes(Math.max(0, Math.floor((Date.now() - new Date(log.timestamp).getTime()) / 60000)))
+  const when = `${formatTime(log.timestamp)} by ${who} (${ago} ago)`
+
+  let title = 'Already logged today'
+  if (medication && reason === 'same-session') {
+    title = `${session?.label || 'Dose'} already given`
+  } else if (medication) {
+    title = 'A dose was given recently'
+  }
+
+  return (
+    <div
+      role="alert"
+      className={cx('mt-3 rounded-2xl px-4 py-3', medication ? 'bg-rose text-white' : 'border-[1.5px] border-rose bg-white')}
+    >
+      <p className="text-[15px] font-bold">⚠ {title}</p>
+      <p className="mt-0.5 text-sm">
+        {session?.label} · {when}
+      </p>
+      <p className={cx('mt-1 text-xs', !medication && 'text-cocoa')}>{describeLog(log)}</p>
+      {medication && !confirmed && (
+        <button
+          onClick={onConfirm}
+          className="mt-3 min-h-11 w-full rounded-full bg-white px-4 text-sm font-semibold text-rose"
+        >
+          This is a separate dose — log anyway
+        </button>
+      )}
+      {medication && confirmed && (
+        <p className="mt-2 text-xs font-semibold">Confirmed as a separate dose. It will be logged as normal.</p>
+      )}
+    </div>
   )
 }
