@@ -4,7 +4,7 @@ import { Header } from '../components/Header'
 import { BulletList } from '../components/SummaryCard'
 import { Button, Card, Page, Section } from '../components/ui'
 import { getDevice } from '../data/patient'
-import { getShiftSummary } from '../lib/ai'
+import { getShiftSummary } from '../lib/ai-client'
 import { describeLog, formatTime, logNotes } from '../lib/format'
 import { useStore } from '../lib/store'
 

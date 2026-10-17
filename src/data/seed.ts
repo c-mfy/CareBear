@@ -1,7 +1,7 @@
 // HARDCODED: demo seed data — caregivers, past logs, past handoffs.
 // Generated relative to "now" so the calendar and history always look recent.
 
-import { mockSummary } from '../lib/ai'
+import { mockSummary } from '../lib/ai-client'
 import type { AppState, Caregiver, FieldValue, Handoff, LogEntry } from '../types'
 import { devices } from './patient'
 
