@@ -1,40 +1,81 @@
 @import "tailwindcss";
 
 /*
-  THEME — swap these to restyle the whole app.
-  4 colors + 2 fonts. Tailwind turns each into classes:
-    --color-brand   -> bg-brand, text-brand, border-brand
-    --color-brand-2 -> bg-brand-2 ...
-    --color-accent  -> bg-accent ...
-    --color-ink     -> text-ink ...
-    --font-display  -> font-display
-    --font-body     -> font-body
-  Placeholder values below are a rough "2016 sunset" guess.
+  THEME — the team palette. Change a hex here to restyle the whole app.
+  Each color becomes Tailwind classes, e.g. --color-teal -> bg-teal, text-teal, border-teal.
+
+    lilac  #f7f5ff  page background
+    mist   #e1f5f4  soft teal background (log screen, tags)
+    aqua   #b9f1ee  borders, "due" badges
+    sea    #6ebec1  placeholder text, dashed lines
+    teal   #1bb3b0  primary actions, checked boxes
+    blush  #f7c2dd  soft pink fills
+    rose   #f392ba  pink accents, notes
+    cocoa  #755339  secondary text
+    brown  #40312a  main text, dark bar
+    white  #ffffff  cards
 */
 @theme {
-  --color-brand: #ff6fa8;   /* main: buttons, highlights */
-  --color-brand-2: #a78bfa; /* secondary: summary cards, chips */
-  --color-accent: #3dd6d0;  /* small pops: on-shift badge, links */
-  --color-ink: #1f1b2e;     /* body text */
+  --color-lilac: #f7f5ff;
+  --color-mist: #e1f5f4;
+  --color-aqua: #b9f1ee;
+  --color-sea: #6ebec1;
+  --color-teal: #1bb3b0;
+  --color-blush: #f7c2dd;
+  --color-rose: #f392ba;
+  --color-cocoa: #755339;
+  --color-brown: #40312a;
 
-  --font-display: ui-rounded, "Trebuchet MS", system-ui, sans-serif;
-  --font-body: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: Poppins, system-ui, sans-serif;
+  --font-body: Poppins, system-ui, sans-serif;
 }
 
 html,
 body {
-  background: #f6f4fa;
-  color: var(--color-ink);
+  background: var(--color-lilac);
+  color: var(--color-brown);
   font-family: var(--font-body);
   -webkit-tap-highlight-color: transparent;
 }
 
-/* FullCalendar sizing tweaks for a phone-width week view */
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-sea);
+}
+
+/* ---------- FullCalendar, restyled to the palette ---------- */
 .fc {
   font-size: 0.7rem;
+  --fc-border-color: var(--color-mist);
+  --fc-today-bg-color: var(--color-lilac);
+  --fc-now-indicator-color: var(--color-rose);
+  --fc-page-bg-color: #ffffff;
+  --fc-button-bg-color: var(--color-mist);
+  --fc-button-border-color: var(--color-mist);
+  --fc-button-text-color: var(--color-brown);
+  --fc-button-hover-bg-color: var(--color-aqua);
+  --fc-button-hover-border-color: var(--color-aqua);
+  --fc-button-active-bg-color: var(--color-teal);
+  --fc-button-active-border-color: var(--color-teal);
+}
+.fc .fc-toolbar-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.fc .fc-button {
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+}
+.fc .fc-col-header-cell-cushion,
+.fc .fc-timegrid-slot-label-cushion {
+  color: var(--color-cocoa);
+  font-weight: 600;
 }
 .fc .fc-timegrid-slot {
   height: 1.4rem;
+}
+.fc .fc-event {
+  border-radius: 6px;
 }
 .fc .fc-event-title {
   font-weight: 600;

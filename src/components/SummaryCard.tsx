@@ -1,13 +1,16 @@
 import { formatDateTime } from '../lib/format'
 import { useCaregiver, useStore } from '../lib/store'
 import type { Handoff } from '../types'
-import { Card } from './ui'
+import { Card, Tag } from './ui'
 
 export function BulletList({ bullets }: { bullets: string[] }) {
   return (
-    <ul className="list-disc space-y-1 pl-5 text-sm">
+    <ul className="space-y-1.5 text-[13px] leading-snug">
       {bullets.map((b, i) => (
-        <li key={i}>{b}</li>
+        <li key={i} className="flex gap-2">
+          <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-teal" />
+          <span>{b}</span>
+        </li>
       ))}
     </ul>
   )
@@ -16,17 +19,16 @@ export function BulletList({ bullets }: { bullets: string[] }) {
 function HandoffCard({ handoff }: { handoff: Handoff }) {
   const caregiver = useCaregiver(handoff.caregiverId)
   let name = 'Unknown'
-  let color = '#999'
   if (caregiver) {
     name = caregiver.name
-    color = caregiver.color
   }
   return (
-    <Card className="bg-brand-2/15">
-      <h2 className="font-display text-lg font-bold">
-        <span style={{ color }}>{name}'s</span> Summary
-      </h2>
-      <p className="mb-2 text-xs text-gray-500">
+    <Card className="border-l-[5px] border-teal">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-sm font-bold">{name}'s summary</h2>
+        <Tag className="bg-mist text-teal">✦ AI summary</Tag>
+      </div>
+      <p className="mb-2 text-xs text-cocoa">
         {formatDateTime(handoff.start)} – {formatDateTime(handoff.end)}
       </p>
       <BulletList bullets={handoff.summaryBullets} />
@@ -41,7 +43,7 @@ export function SummaryCard() {
   if (!latest) {
     return (
       <Card>
-        <p className="text-sm text-gray-500">No handoffs yet.</p>
+        <p className="text-sm text-cocoa">No handoffs yet.</p>
       </Card>
     )
   }

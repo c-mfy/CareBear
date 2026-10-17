@@ -6,9 +6,9 @@ import type { AppState, Caregiver, FieldValue, Handoff, LogEntry } from '../type
 import { devices } from './patient'
 
 export const seedCaregivers: Caregiver[] = [
-  { id: 'mom', name: 'Mom', color: '#ff6fa8' },
-  { id: 'nurse-alex', name: 'Nurse Alex', color: '#5bc0eb' },
-  { id: 'dad', name: 'Dad', color: '#9b5de5' },
+  { id: 'mom', name: 'Mom', color: '#f392ba' },
+  { id: 'nurse-alex', name: 'Nurse Alex', color: '#1bb3b0' },
+  { id: 'dad', name: 'Dad', color: '#755339' },
 ]
 
 // Typical values for number fields

@@ -12,7 +12,7 @@ export function CareCalendar() {
 
   const events = state.logs.map((log) => {
     const caregiver = state.caregivers.find((c) => c.id === log.caregiverId)
-    let color = '#999'
+    let color = '#755339'
     if (caregiver) {
       color = caregiver.color
     }
@@ -30,7 +30,7 @@ export function CareCalendar() {
 
   return (
     <Card className="p-2">
-      <div className="mb-2 flex flex-wrap gap-3 px-1 text-xs">
+      <div className="mb-2 flex flex-wrap gap-3 px-1 text-xs font-medium text-cocoa">
         {state.caregivers.map((c) => (
           <span key={c.id} className="flex items-center gap-1">
             <Dot color={c.color} /> {c.name}

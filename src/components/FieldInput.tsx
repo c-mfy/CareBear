@@ -17,17 +17,13 @@ export function FieldInput({
       <button
         type="button"
         onClick={() => onChange(!checked)}
-        className={cx(
-          'flex min-h-12 w-full items-center gap-3 rounded-xl border px-3 text-left',
-          checked && 'border-brand bg-brand/10',
-          !checked && 'border-gray-300 bg-white',
-        )}
+        className="flex min-h-[52px] w-full items-center gap-3 rounded-2xl bg-white px-4 text-left text-sm active:scale-[0.99]"
       >
         <span
           className={cx(
-            'flex h-6 w-6 items-center justify-center rounded-md border-2 text-sm text-white',
-            checked && 'border-brand bg-brand',
-            !checked && 'border-gray-300',
+            'flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] border-2 text-[13px] text-white',
+            checked && 'border-teal bg-teal',
+            !checked && 'border-sea',
           )}
         >
           {checked && '✓'}
@@ -43,12 +39,13 @@ export function FieldInput({
       shown = String(value)
     }
     return (
-      <label className="flex min-h-12 items-center gap-3 rounded-xl border border-gray-300 bg-white px-3">
+      <label className="flex min-h-[52px] items-center gap-3 rounded-2xl bg-white px-4 text-sm">
         <span className="flex-1">{field.label}</span>
         <input
           type="number"
           inputMode="decimal"
           value={shown}
+          placeholder="—"
           onChange={(e) => {
             if (e.target.value === '') {
               onChange('') // empty = not filled in
@@ -56,9 +53,9 @@ export function FieldInput({
               onChange(Number(e.target.value))
             }
           }}
-          className="w-20 bg-transparent text-right font-semibold outline-none"
+          className="w-20 rounded-lg bg-mist px-2 py-1.5 text-right font-semibold outline-none"
         />
-        <span className="text-sm text-gray-500">{field.unit}</span>
+        <span className="w-12 text-xs text-cocoa">{field.unit}</span>
       </label>
     )
   }
@@ -71,9 +68,9 @@ export function FieldInput({
     <textarea
       value={text}
       onChange={(e) => onChange(e.target.value)}
-      placeholder="Notes (optional)"
-      rows={4}
-      className="w-full rounded-xl border border-gray-300 bg-white p-3"
+      placeholder="Notes for the care team (optional)"
+      rows={3}
+      className="w-full rounded-2xl bg-white p-4 text-sm outline-none"
     />
   )
 }

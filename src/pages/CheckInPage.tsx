@@ -21,15 +21,18 @@ export function CheckInPage() {
     return (
       <Page>
         <Header title="Check in" back />
-        <main className="px-4 pt-4">
+        <main className="px-4 pt-3">
           <Card className="space-y-3">
-            <p>
+            <p className="text-sm">
               <b>{onShift.name}</b> is still on shift. They need to hand off before someone else checks in.
             </p>
-            <Link to="/handoff" className="flex min-h-12 items-center justify-center rounded-xl bg-brand font-semibold text-white">
+            <Link to="/handoff" className="flex min-h-12 items-center justify-center rounded-full bg-teal font-semibold text-white">
               Go to handoff
             </Link>
-            <Link to={next} className="flex min-h-12 items-center justify-center rounded-xl border border-gray-300 font-semibold">
+            <Link
+              to={next}
+              className="flex min-h-12 items-center justify-center rounded-full border-[1.5px] border-aqua font-semibold"
+            >
               Continue as {onShift.name}
             </Link>
           </Card>
@@ -41,8 +44,9 @@ export function CheckInPage() {
   return (
     <Page>
       <Header title="Check in" back />
-      <main className="px-4 pt-4">
-        <h2 className="mb-3 font-display text-lg font-bold">Who's logging?</h2>
+      <main className="px-4 pt-3">
+        <h2 className="text-2xl font-bold">Who's logging?</h2>
+        <p className="mb-4 text-sm text-cocoa">Pick your name to start your shift.</p>
         <CaregiverPicker onPick={handlePick} />
       </main>
     </Page>

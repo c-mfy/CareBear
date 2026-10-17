@@ -1,51 +1,47 @@
 import { Link } from 'react-router-dom'
-import { patient } from '../data/patient'
+import { formatTime } from '../lib/format'
 import { useStore } from '../lib/store'
-import { Dot } from './ui'
+import { BackIcon } from './icons'
+import { Dot, Tag } from './ui'
 
-/** Sticky header: patient name, who's on shift, and the check-in / hand-off action. */
-export function Header({ title, back }: { title?: string; back?: boolean }) {
-  const { onShift } = useStore()
-
-  let action = (
-    <Link to="/checkin" className="flex min-h-12 items-center rounded-xl bg-accent px-3 text-sm font-semibold text-ink">
-      Check in
-    </Link>
-  )
-  if (onShift) {
-    action = (
-      <Link to="/handoff" className="flex min-h-12 items-center rounded-xl bg-brand px-3 text-sm font-semibold text-white">
-        Hand off
-      </Link>
-    )
+/** Who's on shift, as a small pill. */
+export function ShiftTag() {
+  const { state, onShift } = useStore()
+  if (!onShift || !state.currentShift) {
+    return <Tag className="bg-white text-cocoa">No one checked in</Tag>
   }
-
-  let shiftLabel = <span className="text-gray-500">No one checked in</span>
-  if (onShift) {
-    shiftLabel = (
-      <span className="flex items-center gap-1">
-        <Dot color={onShift.color} /> {onShift.name} on shift
-      </span>
-    )
-  }
-
   return (
-    <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/90 px-4 py-3 backdrop-blur">
-      <div className="flex items-center gap-3">
-        {back && (
-          <Link to="/" className="flex min-h-12 min-w-12 items-center justify-center text-2xl" aria-label="Back">
-            ‹
-          </Link>
-        )}
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-2 font-display font-bold text-white">
-          {patient.nickname.charAt(0)}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate font-display text-xl font-bold">{title || patient.nickname}</h1>
-          <div className="text-xs">{shiftLabel}</div>
-        </div>
-        {action}
-      </div>
+    <Tag className="bg-mist text-brown">
+      <Dot color={onShift.color} />
+      {onShift.name} · on shift since {formatTime(state.currentShift.start)}
+    </Tag>
+  )
+}
+
+/**
+ * Sticky top bar.
+ * - Home (no title): just the on-shift pill.
+ * - Inner pages: round back button + centered title.
+ */
+export function Header({ title, back }: { title?: string; back?: boolean }) {
+  if (!back) {
+    return (
+      <header className="sticky top-0 z-20 bg-lilac/90 px-4 pt-4 pb-2 backdrop-blur">
+        <ShiftTag />
+      </header>
+    )
+  }
+  return (
+    <header className="sticky top-0 z-20 flex items-center gap-3 px-4 pt-4 pb-2 backdrop-blur">
+      <Link
+        to="/"
+        aria-label="Back"
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white"
+      >
+        <BackIcon />
+      </Link>
+      <h1 className="flex-1 truncate text-center text-[15px] font-semibold">{title}</h1>
+      <span className="w-12 shrink-0" />
     </header>
   )
 }

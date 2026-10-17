@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
 import { BulletList } from '../components/SummaryCard'
-import { Button, Card, Page, Section } from '../components/ui'
+import { DeviceIcon } from '../components/icons'
+import { Button, Card, Dot, Page, Section, Tag } from '../components/ui'
 import { getDevice } from '../data/patient'
 import { getShiftSummary } from '../lib/ai-client'
 import { describeLog, formatTime, logNotes } from '../lib/format'
@@ -10,7 +11,7 @@ import { useStore } from '../lib/store'
 
 /** End-of-shift handoff: review logs, add overall notes, generate summary, check out. */
 export function HandoffPage() {
-  const { onShift, shiftLogs, completeHandoff } = useStore()
+  const { state, onShift, shiftLogs, completeHandoff } = useStore()
   const navigate = useNavigate()
   const [overallNotes, setOverallNotes] = useState('')
   const [bullets, setBullets] = useState<string[] | null>(null)
@@ -21,11 +22,11 @@ export function HandoffPage() {
   if (!onShift) {
     return (
       <Page>
-        <Header title="Handoff" back />
-        <main className="px-4 pt-4">
+        <Header title="Shift report" back />
+        <main className="px-4 pt-3">
           <Card className="space-y-3">
-            <p>No one is checked in right now.</p>
-            <Link to="/checkin" className="flex min-h-12 items-center justify-center rounded-xl bg-brand font-semibold text-white">
+            <p className="text-sm">No one is checked in right now.</p>
+            <Link to="/checkin" className="flex min-h-12 items-center justify-center rounded-full bg-teal font-semibold text-white">
               Check in
             </Link>
           </Card>
@@ -35,6 +36,10 @@ export function HandoffPage() {
   }
 
   const caregiverName = onShift.name
+  let onShiftStart = new Date().toISOString()
+  if (state.currentShift) {
+    onShiftStart = state.currentShift.start
+  }
   const logs = shiftLogs().sort((a, b) => a.timestamp.localeCompare(b.timestamp))
 
   async function handleGenerate() {
@@ -78,23 +83,84 @@ export function HandoffPage() {
     generateLabel = 'Summarizing…'
   }
 
+  // Summary card body: edit box or bullets
+  let summaryBody = <BulletList bullets={bullets || []} />
+  if (editingSummary) {
+    summaryBody = (
+      <>
+        <textarea
+          value={draftSummary}
+          onChange={(e) => setDraftSummary(e.target.value)}
+          aria-label="Edit summary"
+          rows={Math.max(4, (bullets || []).length)}
+          className="w-full rounded-xl bg-lilac p-3 text-sm outline-none"
+        />
+        <p className="mt-2 text-xs text-cocoa">Use one line for each summary bullet.</p>
+      </>
+    )
+  }
+
+  // Buttons under the summary
+  let summaryActions = (
+    <>
+      <Button onClick={handleConfirm}>Hand off & check out ✓</Button>
+      <div className="flex gap-3">
+        <Button variant="ghost" onClick={handleEdit}>
+          Edit summary
+        </Button>
+        <Button variant="ghost" onClick={handleGenerate} disabled={loading}>
+          ↻ Regenerate
+        </Button>
+      </div>
+    </>
+  )
+  if (editingSummary) {
+    summaryActions = (
+      <div className="flex gap-3">
+        <Button onClick={handleSaveEdits} disabled={!draftSummary.trim()}>
+          Save edits
+        </Button>
+        <Button variant="ghost" onClick={() => setEditingSummary(false)}>
+          Cancel
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <Page>
-      <Header title="Handoff" back />
+      <Header title="Shift report" back />
       <main className="px-4 pt-2">
-        <Section title={`${caregiverName}'s shift`}>
+        {/* Shift card */}
+        <Card>
+          <p className="text-xs text-cocoa">Outgoing</p>
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-2 text-[15px] font-bold">
+              <Dot color={onShift.color} /> {caregiverName}
+            </span>
+            <span className="text-xs text-cocoa">
+              {formatTime(onShiftStart)} – now · {logs.length} logged
+            </span>
+          </div>
+        </Card>
+
+        <Section title="Logged this shift">
           <Card className="space-y-3">
-            {logs.length === 0 && <p className="text-sm text-gray-500">Nothing logged this shift.</p>}
+            {logs.length === 0 && <p className="text-sm text-cocoa">Nothing logged this shift.</p>}
             {logs.map((l) => {
               const device = getDevice(l.deviceId)
               const notes = logNotes(l)
               return (
-                <div key={l.id} className="text-sm">
-                  <div className="font-semibold">
-                    {device?.name} · {formatTime(l.timestamp)}
+                <div key={l.id} className="flex gap-3 text-[13px]">
+                  <DeviceIcon deviceId={l.deviceId} size={28} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex justify-between font-semibold">
+                      <span>{device?.name}</span>
+                      <span className="text-xs font-medium text-cocoa">{formatTime(l.timestamp)}</span>
+                    </div>
+                    <div className="text-cocoa">{describeLog(l)}</div>
+                    {notes && <div className="mt-0.5 text-rose">“{notes}”</div>}
                   </div>
-                  <div className="text-gray-600">{describeLog(l)}</div>
-                  {notes && <div className="text-gray-500 italic">{notes}</div>}
                 </div>
               )
             })}
@@ -109,8 +175,8 @@ export function HandoffPage() {
               setBullets(null) // notes changed: summary must be regenerated
             }}
             placeholder="Anything the next caregiver should know (optional)"
-            rows={4}
-            className="w-full rounded-xl border border-gray-300 bg-white p-3"
+            rows={3}
+            className="w-full rounded-2xl bg-white p-4 text-sm outline-none"
           />
         </Section>
 
@@ -122,45 +188,14 @@ export function HandoffPage() {
           )}
           {bullets && (
             <>
-              <Card className="bg-brand-2/15">
-                <h3 className="mb-2 font-display font-bold">Summary for next caregiver</h3>
-                {editingSummary ? (
-                  <>
-                    <textarea
-                      value={draftSummary}
-                      onChange={(e) => setDraftSummary(e.target.value)}
-                      aria-label="Edit summary"
-                      rows={Math.max(4, bullets.length)}
-                      className="w-full rounded-xl border border-gray-300 bg-white p-3 text-sm"
-                    />
-                    <p className="mt-2 text-xs text-gray-500">Use one line for each summary bullet.</p>
-                  </>
-                ) : (
-                  <BulletList bullets={bullets} />
-                )}
-              </Card>
-              {editingSummary ? (
-                <div className="flex gap-3">
-                  <Button onClick={handleSaveEdits} disabled={!draftSummary.trim()}>
-                    Save edits
-                  </Button>
-                  <Button variant="ghost" onClick={() => setEditingSummary(false)}>
-                    Cancel
-                  </Button>
+              <Card className="border-l-[5px] border-teal">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-bold">Summary for next caregiver</h3>
+                  <Tag className="bg-mist text-teal">✦ AI summary</Tag>
                 </div>
-              ) : (
-                <>
-                  <Button onClick={handleConfirm}>Hand off & check out</Button>
-                  <div className="flex gap-3">
-                    <Button variant="ghost" onClick={handleEdit}>
-                      Edit summary
-                    </Button>
-                    <Button variant="ghost" onClick={handleGenerate} disabled={loading}>
-                      Regenerate
-                    </Button>
-                  </div>
-                </>
-              )}
+                {summaryBody}
+              </Card>
+              {summaryActions}
             </>
           )}
         </div>

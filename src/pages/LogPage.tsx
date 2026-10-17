@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { FieldInput } from '../components/FieldInput'
 import { Header } from '../components/Header'
-import { Button, Card, Page } from '../components/ui'
+import { BottomBar, Page } from '../components/ui'
+import { DeviceIcon } from '../components/icons'
 import { getDevice, patient } from '../data/patient'
 import { getSuggestions } from '../lib/ai-client'
 import { cx } from '../lib/cx'
 import { pickSession, quarterlyDueDate } from '../lib/sessions'
+import { formatScheduled, formatTime } from '../lib/format'
 import { useStore } from '../lib/store'
 import type { FieldValue, Suggestion } from '../types'
 
@@ -68,7 +70,7 @@ export function LogPage() {
     return (
       <Page>
         <Header title="Unknown tag" back />
-        <p className="p-4">This tag isn't linked to a device.</p>
+        <p className="p-4 text-sm">This tag isn't linked to a device.</p>
       </Page>
     )
   }
@@ -87,65 +89,95 @@ export function LogPage() {
     navigate('/')
   }
 
+  let scheduled = ''
+  if (session?.scheduledTime) {
+    scheduled = `Scheduled ${formatScheduled(session.scheduledTime)}`
+  }
+
   return (
-    <Page>
-      <Header title={device.name} back />
-      <main className="space-y-4 px-4 pt-4">
-        <p className="text-sm text-gray-500">{device.model}</p>
+    <Page className="bg-mist" bottomBar>
+      <Header title="Log care" back />
+      <main className="px-4 pt-2">
+        {/* Device header */}
+        <div className="flex items-center gap-3">
+          <span className="rounded-2xl bg-white p-1.5">
+            <DeviceIcon deviceId={device.id} size={44} />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-[26px] leading-tight font-bold">{device.name}</h1>
+            <p className="text-xs text-cocoa">{device.model}</p>
+          </div>
+        </div>
 
         {/* Session picker (auto-selected, can change) */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="mt-4 flex gap-1 overflow-x-auto rounded-2xl bg-white p-1">
           {device.sessions.map((s) => (
             <button
               key={s.id}
               onClick={() => setSessionId(s.id)}
               className={cx(
-                'min-h-12 shrink-0 rounded-full px-4 text-sm font-semibold',
-                s.id === sessionId && 'bg-brand text-white',
-                s.id !== sessionId && 'bg-white text-ink shadow-sm',
+                'min-h-11 flex-1 shrink-0 rounded-xl px-3 text-[13px] font-semibold whitespace-nowrap',
+                s.id === sessionId && 'bg-teal text-white',
+                s.id !== sessionId && 'text-cocoa',
               )}
             >
               {s.label}
             </button>
           ))}
         </div>
+        <div className="mt-2 flex justify-between px-0.5 text-xs text-cocoa">
+          <span>{scheduled}</span>
+          <span>
+            Logging as <b className="text-brown">{onShift.name}</b>
+          </span>
+        </div>
 
         {session?.recurrence === 'quarterly' && (
-          <p className="text-sm text-gray-600">
+          <p className="mt-2 text-xs text-cocoa">
             Due by {quarterlyDueDate(patient.lastGtubeButtonChange).toLocaleDateString()}
           </p>
         )}
 
         {session && (
-          <Card className="space-y-3">
+          <>
             {/* AI suggested options: tap one to fill the form */}
-            <div className="flex flex-wrap gap-2">
-              {loadingSuggestions && <span className="text-xs text-gray-400">Loading suggestions…</span>}
+            <p className="mt-4 text-[11px] font-bold tracking-wider text-teal uppercase">
+              ✦ Quick fill · based on recent logs
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {loadingSuggestions && <span className="text-xs text-sea">Loading suggestions…</span>}
               {suggestions.map((s) => (
                 <button
                   key={s.label}
                   onClick={() => setValues({ ...s.values })}
-                  className="min-h-10 rounded-full border-2 border-brand-2 px-3 text-xs font-semibold"
+                  className="min-h-9 rounded-full border-[1.5px] border-aqua bg-white px-3.5 text-xs font-semibold active:bg-teal active:text-white"
                 >
                   {s.label}
                 </button>
               ))}
             </div>
 
-            {session.fields.map((f) => (
-              <FieldInput
-                key={f.id}
-                field={f}
-                value={values[f.id]}
-                onChange={(v) => setValues((prev) => ({ ...prev, [f.id]: v }))}
-              />
-            ))}
-
-            <Button onClick={handleComplete}>Mark as complete</Button>
-            <p className="text-center text-xs text-gray-500">Logging as {onShift.name}</p>
-          </Card>
+            <div className="mt-3 space-y-2">
+              {session.fields.map((f) => (
+                <FieldInput
+                  key={f.id}
+                  field={f}
+                  value={values[f.id]}
+                  onChange={(v) => setValues((prev) => ({ ...prev, [f.id]: v }))}
+                />
+              ))}
+            </div>
+          </>
         )}
       </main>
+
+      {session && (
+        <BottomBar className="bg-teal p-0 pl-0">
+          <button onClick={handleComplete} className="min-h-14 w-full rounded-full text-[15px]">
+            Mark as complete · {formatTime(new Date().toISOString())}
+          </button>
+        </BottomBar>
+      )}
     </Page>
   )
 }
