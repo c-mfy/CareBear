@@ -1,148 +1,133 @@
-// Client side of the AI features. Calls /api/ai (Vercel function, holds the Gemini key).
-// If the call fails for any reason (no key, local `vite` dev, bad Wi-Fi), we fall back
-// to the mock functions below so the demo never breaks.
+// Vercel serverless function: POST /api/ai
+// Holds the Gemini API key server-side so it never ships in the React bundle.
+// Env vars (set in Vercel project settings): GEMINI_API_KEY, optional GEMINI_MODEL.
+// Stores nothing — it only forwards a prompt and returns JSON.
 
-import { getDevice } from '../data/patient'
-import type { Device, FieldValue, LogEntry, Session, Suggestion } from '../types'
-import { describeLog, formatTime, logNotes } from './format'
+declare const process: { env: Record<string, string | undefined> }
 
-const TIMEOUT_MS = 8000
+interface SuggestBody {
+  task: 'suggest'
+  device: string
+  session: string
+  fields: { id: string; label: string; type: string; unit?: string }[]
+  recent: Record<string, unknown>[]
+}
 
-async function callAi<T>(body: unknown): Promise<T> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+interface SummaryBody {
+  task: 'summary'
+  caregiver: string
+  entries: { device?: string; session?: string; time: string; done: string; notes: string }[]
+  overallNotes: string
+}
+
+interface RecentBody {
+  task: 'recent'
+  hours: number
+  entries: { caregiver: string; device?: string; session?: string; time: string; done: string; notes: string }[]
+}
+
+type Body = SuggestBody | SummaryBody | RecentBody
+
+function buildPrompt(body: Body): string {
+  if (body.task === 'recent') {
+    return [
+      `You summarize home care for a medically complex child so the next caregiver can catch up fast.`,
+      `Everything logged in the past ${body.hours} hours, by any caregiver: ${JSON.stringify(body.entries)}.`,
+      `Write 3 to 5 short, plain bullets. Put anything missed, abnormal, or noted first. Mention who did it when useful.`,
+      `Do not invent anything not in the entries.`,
+      `Respond ONLY with JSON: {"bullets":["..."]}`,
+    ].join('\n')
+  }
+  if (body.task === 'suggest') {
+    return [
+      `You help a home caregiver log a medical device session quickly.`,
+      `Device: ${body.device}. Session: ${body.session}.`,
+      `Fields (id, label, type): ${JSON.stringify(body.fields)}.`,
+      `Most recent past entries for this session, newest first: ${JSON.stringify(body.recent)}.`,
+      `Return 2 or 3 likely ways this session went today, based on past entries.`,
+      `Respond ONLY with JSON: {"suggestions":[{"label":"short 2-5 word label","values":{"<fieldId>": true|false|number|"note text"}}]}`,
+      `Use only the field ids given. "check" fields are booleans, "number" fields are numbers, "notes" is a short string.`,
+    ].join('\n')
+  }
+  return [
+    `You write shift handoff summaries for caregivers of a medically complex child.`,
+    `Outgoing caregiver: ${body.caregiver}.`,
+    `Logged entries this shift: ${JSON.stringify(body.entries)}.`,
+    `Caregiver's overall notes: ${JSON.stringify(body.overallNotes)}.`,
+    `Write 3 to 5 short, plain bullets for the next caregiver. Put anything missed, abnormal, or noted first.`,
+    `Do not invent anything not in the entries or notes.`,
+    `Respond ONLY with JSON: {"bullets":["..."]}`,
+  ].join('\n')
+}
+
+export async function POST(request: Request): Promise<Response> {
+  const key = process.env.GEMINI_API_KEY
+  if (!key) {
+    return Response.json({ error: 'GEMINI_API_KEY not set' }, { status: 500 })
+  }
+  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+
+  let body: Body
   try {
-    const res = await fetch('/api/ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    })
-    if (!res.ok) {
-      throw new Error(`AI request failed: ${res.status}`)
-    }
-    return (await res.json()) as T
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
-// ---------- Suggestions on the log screen ----------
-
-/** Drop anything the model invented that doesn't match a real field. */
-function cleanValues(session: Session, raw: Record<string, unknown>): Record<string, FieldValue> {
-  const out: Record<string, FieldValue> = {}
-  for (const field of session.fields) {
-    const v = raw[field.id]
-    if (field.type === 'check' && typeof v === 'boolean') {
-      out[field.id] = v
-    } else if (field.type === 'number' && typeof v === 'number') {
-      out[field.id] = v
-    } else if (field.type === 'notes' && typeof v === 'string') {
-      out[field.id] = v
-    }
-  }
-  return out
-}
-
-export function mockSuggestions(session: Session, recent: LogEntry[]): Suggestion[] {
-  const last = recent[0]
-  const allDone: Record<string, FieldValue> = {}
-  for (const field of session.fields) {
-    if (field.type === 'check') {
-      allDone[field.id] = true
-    } else if (field.type === 'number' && last && typeof last.values[field.id] === 'number') {
-      allDone[field.id] = last.values[field.id]
-    }
-  }
-  allDone.notes = 'No issues.'
-  const list: Suggestion[] = [{ label: 'All done, no issues', values: allDone }]
-  if (last) {
-    const same = { ...last.values }
-    delete same.notes
-    list.push({ label: 'Same as last time', values: same })
-  }
-  return list
-}
-
-export async function getSuggestions(
-  device: Device,
-  session: Session,
-  recent: LogEntry[],
-): Promise<Suggestion[]> {
-  try {
-    const data = await callAi<{ suggestions?: { label?: string; values?: Record<string, unknown> }[] }>({
-      task: 'suggest',
-      device: device.name,
-      session: session.label,
-      fields: session.fields,
-      recent: recent.slice(0, 5).map((l) => l.values),
-    })
-    const list = (data.suggestions || [])
-      .filter((s) => typeof s.label === 'string' && s.values)
-      .slice(0, 3)
-      .map((s) => ({ label: s.label as string, values: cleanValues(session, s.values || {}) }))
-    if (list.length === 0) {
-      return mockSuggestions(session, recent)
-    }
-    return list
+    body = await request.json()
   } catch {
-    return mockSuggestions(session, recent)
+    return Response.json({ error: 'Bad JSON' }, { status: 400 })
   }
+  if (body.task !== 'suggest' && body.task !== 'summary' && body.task !== 'recent') {
+    return Response.json({ error: 'Unknown task' }, { status: 400 })
+  }
+
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: buildPrompt(body) }] }],
+      generationConfig: { responseMimeType: 'application/json' },
+    }),
+  })
+  if (!res.ok) {
+    return Response.json({ error: `Gemini error ${res.status}` }, { status: 502 })
+  }
+
+  const data = await res.json()
+  const parsed = extractJson(data)
+  if (parsed === null) {
+    // Log what came back so it shows in Vercel → Logs
+    console.error('Model did not return JSON:', JSON.stringify(data).slice(0, 1000))
+    return Response.json({ error: 'Model did not return JSON' }, { status: 502 })
+  }
+  return Response.json(parsed)
 }
 
-// ---------- Shift summary on handoff ----------
-
-export function mockSummary(logs: LogEntry[], overallNotes: string): string[] {
-  const bullets: string[] = []
-  const sorted = [...logs].sort((a, b) => a.timestamp.localeCompare(b.timestamp))
-  for (const log of sorted) {
-    const device = getDevice(log.deviceId)
-    const session = device?.sessions.find((s) => s.id === log.sessionId)
-    let line = `${device?.name} (${session?.label}, ${formatTime(log.timestamp)}): ${describeLog(log)}`
-    const n = logNotes(log)
-    if (n) {
-      line += ` — "${n}"`
-    }
-    bullets.push(line)
+/**
+ * Pull a JSON object out of Gemini's reply. Handles:
+ * - text split across several parts, or "thought" parts before the answer
+ * - ```json code fences
+ * - extra words before/after the object
+ */
+function extractJson(data: unknown): unknown {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const parts: any[] = (data as any)?.candidates?.[0]?.content?.parts || []
+  const text = parts
+    .filter((p) => typeof p?.text === 'string' && p.thought !== true)
+    .map((p) => p.text)
+    .join('')
+  if (!text) {
+    return null
   }
-  if (overallNotes.trim()) {
-    bullets.unshift(overallNotes.trim())
-  }
-  if (bullets.length === 0) {
-    bullets.push('Nothing was logged this shift.')
-  }
-  return bullets
-}
-
-export async function getShiftSummary(
-  caregiverName: string,
-  logs: LogEntry[],
-  overallNotes: string,
-): Promise<string[]> {
   try {
-    const entries = logs.map((l) => {
-      const device = getDevice(l.deviceId)
-      return {
-        device: device?.name,
-        session: device?.sessions.find((s) => s.id === l.sessionId)?.label,
-        time: formatTime(l.timestamp),
-        done: describeLog(l),
-        notes: logNotes(l),
-      }
-    })
-    const data = await callAi<{ bullets?: unknown[] }>({
-      task: 'summary',
-      caregiver: caregiverName,
-      entries,
-      overallNotes,
-    })
-    const bullets = (data.bullets || []).filter((b): b is string => typeof b === 'string')
-    if (bullets.length === 0) {
-      return mockSummary(logs, overallNotes)
-    }
-    return bullets
+    return JSON.parse(text)
   } catch {
-    return mockSummary(logs, overallNotes)
+    // fall through to the cleanup below
+  }
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start === -1 || end <= start) {
+    return null
+  }
+  try {
+    return JSON.parse(text.slice(start, end + 1))
+  } catch {
+    return null
   }
 }
