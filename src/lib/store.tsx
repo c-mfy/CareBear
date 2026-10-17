@@ -8,10 +8,11 @@ interface Store {
   state: AppState
   onShift: Caregiver | null
   addCaregiver: (name: string) => Caregiver
-  checkIn: (caregiverId: string) => void
+  checkIn: (caregiverId: string, tagId: string) => void
   addLog: (deviceId: string, sessionId: string, values: Record<string, FieldValue>) => void
   completeHandoff: (overallNotes: string, summaryBullets: string[]) => void
   shiftLogs: () => LogEntry[]
+  setLastDoctorVisit: (date: string) => void
   resetDemo: () => void
 }
 
@@ -41,10 +42,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return caregiver
   }
 
-  function checkIn(caregiverId: string) {
+  /** EVV: only call with a door tag id that matched DOOR_TAG_ID */
+  function checkIn(caregiverId: string, tagId: string) {
     setState((s) => ({
       ...s,
-      currentShift: { caregiverId, start: new Date().toISOString() },
+      currentShift: { caregiverId, start: new Date().toISOString(), tagId },
     }))
   }
 
@@ -86,9 +88,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       overallNotes,
       logIds: shiftLogs().map((l) => l.id),
       summaryBullets,
+      tagId: shift.tagId,
     }
     // Logs the caregiver out of the team (ends the shift)
     setState((s) => ({ ...s, currentShift: null, handoffs: [handoff, ...s.handoffs] }))
+  }
+
+  function setLastDoctorVisit(date: string) {
+    setState((s) => ({ ...s, lastDoctorVisit: date }))
   }
 
   function resetDemo() {
@@ -103,6 +110,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     addLog,
     completeHandoff,
     shiftLogs,
+    setLastDoctorVisit,
     resetDemo,
   }
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

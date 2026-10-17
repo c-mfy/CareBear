@@ -72,10 +72,11 @@ textarea::placeholder {
   font-weight: 600;
 }
 .fc .fc-timegrid-slot {
-  height: 1.4rem;
+  height: 1.6rem;
 }
 .fc .fc-event {
   border-radius: 6px;
+  cursor: pointer;
 }
 .fc .fc-event-title {
   font-weight: 600;

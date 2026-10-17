@@ -3,14 +3,15 @@
 // to the mock functions below so the demo never breaks.
 
 import { getDevice } from '../data/patient'
-import type { Device, FieldValue, LogEntry, Session, Suggestion } from '../types'
+import type { Device, FieldValue, LogEntry, NoteSection, Session, Suggestion } from '../types'
+import { mockDoctorNote, reportForAi, type DoctorReport } from './doctor'
 import { describeLog, formatTime, logNotes } from './format'
 
 const TIMEOUT_MS = 8000
 
-async function callAi<T>(body: unknown): Promise<T> {
+async function callAi<T>(body: unknown, timeoutMs: number = TIMEOUT_MS): Promise<T> {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const res = await fetch('/api/ai', {
       method: 'POST',
@@ -136,5 +137,26 @@ export async function getShiftSummary(
     return bullets.length > 0 ? bullets : mockSummary(logs, overallNotes)
   } catch {
     return mockSummary(logs, overallNotes)
+  }
+}
+
+const DOCTOR_TIMEOUT_MS = 20000 // a longer write-up than the other tasks
+
+export async function getDoctorNote(report: DoctorReport): Promise<NoteSection[]> {
+  try {
+    const data = await callAi<{ sections?: { title?: unknown; bullets?: unknown[] }[] }>(
+      { task: 'doctor', report: reportForAi(report) },
+      DOCTOR_TIMEOUT_MS,
+    )
+    const sections = (data.sections || [])
+      .filter((section) => typeof section.title === 'string' && Array.isArray(section.bullets))
+      .map((section) => ({
+        title: section.title as string,
+        bullets: (section.bullets || []).filter((bullet): bullet is string => typeof bullet === 'string'),
+      }))
+      .filter((section) => section.bullets.length > 0)
+    return sections.length > 0 ? sections : mockDoctorNote(report)
+  } catch {
+    return mockDoctorNote(report)
   }
 }

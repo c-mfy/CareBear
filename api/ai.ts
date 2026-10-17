@@ -20,7 +20,25 @@ interface SummaryBody {
   overallNotes: string
 }
 
-function buildPrompt(body: SuggestBody | SummaryBody): string {
+interface DoctorBody {
+  task: 'doctor'
+  report: Record<string, unknown>
+}
+
+type Body = SuggestBody | SummaryBody | DoctorBody
+
+function buildPrompt(body: Body): string {
+  if (body.task === 'doctor') {
+    return [
+      `You write a care report for the pediatric doctor of a medically complex child, covering home care since the last visit.`,
+      `Home care data (already computed from caregiver logs): ${JSON.stringify(body.report)}.`,
+      `Write these sections, in this order: "Summary", "Treatment adherence", "Symptoms & observations", "Measurements & equipment", "Questions for the doctor".`,
+      `Each section has 2 to 6 short, clinical, factual bullets. Lead with anything missed, abnormal, or recurring. Include dates and counts.`,
+      `"Questions for the doctor" suggests questions the family could ask, based only on the data.`,
+      `Do not invent symptoms, doses, or numbers that are not in the data. Do not diagnose.`,
+      `Respond ONLY with JSON: {"sections":[{"title":"...","bullets":["..."]}]}`,
+    ].join('\n')
+  }
   if (body.task === 'suggest') {
     return [
       `You help a home caregiver log a medical device session quickly.`,
@@ -50,13 +68,13 @@ export async function POST(request: Request): Promise<Response> {
   }
   const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
 
-  let body: SuggestBody | SummaryBody
+  let body: Body
   try {
     body = await request.json()
   } catch {
     return Response.json({ error: 'Bad JSON' }, { status: 400 })
   }
-  if (body.task !== 'suggest' && body.task !== 'summary') {
+  if (body.task !== 'suggest' && body.task !== 'summary' && body.task !== 'doctor') {
     return Response.json({ error: 'Unknown task' }, { status: 400 })
   }
 

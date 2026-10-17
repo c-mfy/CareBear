@@ -21,7 +21,8 @@ Stack: React + Vite + TypeScript + Tailwind v4, FullCalendar (week view), one Ve
 | URL | What it is | Opened by |
 |---|---|---|
 | `/` | Home: summary, tasks, calendar, history, team | Anyone |
-| `/checkin` | "Who's logging?" picker; add a caregiver by name | **Door tag** |
+| `/checkin?tag=<DOOR_TAG_ID>` | "Who's logging?" picker; add a caregiver by name. Without the tag id it only says "tap the door tag" (EVV) | **Door tag** |
+| `/doctor-note` | Detailed report of everything since the last doctor's visit, with AI write-up, copy, and print | Home header "Doctor's note" |
 | `/log/vest` | Log vest session | **Vest tag** |
 | `/log/nebulizer` | Log nebulizer session | **Nebulizer tag** |
 | `/log/feeding-pump` | Log feeding pump session | **Feeding pump tag** |
@@ -30,6 +31,7 @@ Stack: React + Vite + TypeScript + Tailwind v4, FullCalendar (week view), one Ve
 
 Rules:
 - One caregiver is on shift at a time.
+- **EVV:** a shift can only start by tapping the door tag. There is no check-in button in the app. The door tag id is saved on the shift and its handoff.
 - Tapping a device tag while nobody is checked in sends you to check-in, then straight back to that device.
 - The session is auto-picked by time of day, and you can change it with the session buttons:
   - before noon: morning
@@ -70,7 +72,7 @@ Do these in order.
 2. **Get a free Gemini key** at https://aistudio.google.com/apikey.
 3. **In Vercel, go to Project → Settings → Environment Variables** and add `GEMINI_API_KEY`. You can optionally add `GEMINI_MODEL`; check AI Studio for the current model name. Then redeploy.
 4. **Write the NFC tags.** Use an app like NFC Tools on iPhone and write a **URL record** to each sticker:
-   - Door: `https://<your-app>.vercel.app/checkin`
+   - Door: `https://<your-app>.vercel.app/checkin?tag=maya-door-7k2q` (must match `DOOR_TAG_ID` in `src/data/patient.ts`)
    - Vest: `https://<your-app>.vercel.app/log/vest`
    - Nebulizer: `https://<your-app>.vercel.app/log/nebulizer`
    - Feeding pump: `https://<your-app>.vercel.app/log/feeding-pump`

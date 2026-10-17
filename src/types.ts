@@ -56,6 +56,8 @@ export interface LogEntry {
 export interface Shift {
   caregiverId: string
   start: string // ISO
+  /** EVV: id of the door NFC tag that was tapped to check in (proves location) */
+  tagId: string
 }
 
 export interface Handoff {
@@ -66,6 +68,8 @@ export interface Handoff {
   overallNotes: string
   logIds: string[]
   summaryBullets: string[]
+  /** EVV: door tag used to check in for this shift (missing on seed/older data) */
+  tagId?: string
 }
 
 export interface AppState {
@@ -73,6 +77,13 @@ export interface AppState {
   currentShift: Shift | null
   logs: LogEntry[]
   handoffs: Handoff[]
+  /** Local date "YYYY-MM-DD" of the last doctor's visit; the doctor's note covers everything since */
+  lastDoctorVisit: string
+}
+
+export interface NoteSection {
+  title: string
+  bullets: string[]
 }
 
 export interface Suggestion {

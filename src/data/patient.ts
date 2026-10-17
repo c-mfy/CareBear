@@ -10,6 +10,10 @@ export const patient: Patient = {
   lastGtubeButtonChange: '2026-08-01', // HARDCODED placeholder date
 }
 
+// HARDCODED: id written into the door NFC tag URL (/checkin?tag=<id>).
+// Check-in only works with this id, so a shift can only start at the home (EVV).
+export const DOOR_TAG_ID = 'maya-door-7k2q'
+
 const notes = { id: 'notes', label: 'Notes', type: 'notes' as const }
 
 // HARDCODED: device + session definitions from the tag sheet.

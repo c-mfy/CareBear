@@ -2,6 +2,7 @@
 // Generated relative to "now" so the calendar and history always look recent.
 
 import { mockSummary } from '../lib/ai-client'
+import { toDateInput } from '../lib/format'
 import type { AppState, Caregiver, FieldValue, Handoff, LogEntry } from '../types'
 import { devices } from './patient'
 
@@ -109,5 +110,6 @@ export function makeSeed(now: Date = new Date()): AppState {
     currentShift: null,
     logs,
     handoffs, // newest first
+    lastDoctorVisit: toDateInput(end), // the start of the seeded history
   }
 }

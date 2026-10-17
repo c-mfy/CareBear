@@ -8,7 +8,12 @@ export function loadState(): AppState {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
-      return JSON.parse(raw) as AppState
+      const saved = JSON.parse(raw) as AppState
+      if (!saved.lastDoctorVisit) {
+        // saved before the doctor's note existed
+        saved.lastDoctorVisit = makeSeed().lastDoctorVisit
+      }
+      return saved
     }
   } catch {
     // storage blocked or corrupted: fall through to seed

@@ -13,6 +13,23 @@ export function formatDateTime(iso: string): string {
   })
 }
 
+/** Local "YYYY-MM-DD", the format <input type="date"> uses */
+export function toDateInput(d: Date): string {
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${month}-${day}`
+}
+
+/** "YYYY-MM-DD" -> local midnight that day */
+export function fromDateInput(value: string): Date {
+  const [y, m, d] = value.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+export function formatDate(d: Date): string {
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 export function formatScheduled(hhmm: string): string {
   if (!hhmm) {
     return ''

@@ -25,9 +25,7 @@ export function HomePage() {
   let bar = (
     <BottomBar>
       <span className="text-sm">No one on shift</span>
-      <Link to="/checkin" className="flex min-h-11 items-center rounded-full bg-teal px-5 text-sm">
-        Check in →
-      </Link>
+      <span className="flex min-h-11 items-center rounded-full bg-teal px-5 text-sm">Tap door tag to check in</span>
     </BottomBar>
   )
   if (onShift) {
@@ -63,7 +61,7 @@ export function HomePage() {
         </div>
 
         <Section
-          title="Today's care"
+          title="Today's Care"
           right={
             <span className="text-xs font-semibold text-cocoa">
               {doneCount} of {tasks.length} complete
@@ -77,17 +75,13 @@ export function HomePage() {
           <CareCalendar />
         </Section>
 
-        <Section title="Patient history">
+        <Section title="Patient History">
           <HistoryList />
         </Section>
 
         <Section
-          title="Care team"
-          right={
-            <Link to="/checkin" className="text-xs font-semibold text-teal">
-              Add / check in
-            </Link>
-          }
+          title="Care Team"
+          right={<span className="text-xs text-cocoa">New caregivers join at the door tag</span>}
         >
           <Card className="space-y-1 py-2">
             {state.caregivers.map((c) => (

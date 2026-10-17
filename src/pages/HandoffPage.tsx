@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
 import { BulletList } from '../components/SummaryCard'
 import { DeviceIcon } from '../components/icons'
@@ -25,10 +25,7 @@ export function HandoffPage() {
         <Header title="Shift report" back />
         <main className="px-4 pt-3">
           <Card className="space-y-3">
-            <p className="text-sm">No one is checked in right now.</p>
-            <Link to="/checkin" className="flex min-h-12 items-center justify-center rounded-full bg-teal font-semibold text-white">
-              Check in
-            </Link>
+            <p className="text-sm">No one is checked in right now. Tap the door tag to start a shift.</p>
           </Card>
         </main>
       </Page>
@@ -142,6 +139,7 @@ export function HandoffPage() {
               {formatTime(onShiftStart)} – now · {logs.length} logged
             </span>
           </div>
+          <p className="mt-1 text-xs font-semibold text-teal">✓ Checked in at door tag (EVV)</p>
         </Card>
 
         <Section title="Logged this shift">

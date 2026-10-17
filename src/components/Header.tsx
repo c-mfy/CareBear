@@ -20,14 +20,20 @@ export function ShiftTag() {
 
 /**
  * Sticky top bar.
- * - Home (no title): just the on-shift pill.
+ * - Home (no title): on-shift pill + "Doctor's note" tab.
  * - Inner pages: round back button + centered title.
  */
 export function Header({ title, back }: { title?: string; back?: boolean }) {
   if (!back) {
     return (
-      <header className="sticky top-0 z-20 bg-lilac/90 px-4 pt-4 pb-2 backdrop-blur">
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-2 bg-lilac/90 px-4 pt-4 pb-2 backdrop-blur">
         <ShiftTag />
+        <Link
+          to="/doctor-note"
+          className="flex min-h-9 shrink-0 items-center rounded-full bg-teal px-3.5 text-xs font-semibold text-white"
+        >
+          Doctor's note
+        </Link>
       </header>
     )
   }

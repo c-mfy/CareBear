@@ -1,12 +1,13 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { StoreProvider } from './lib/store'
 import { CheckInPage } from './pages/CheckInPage'
+import { DoctorNotePage } from './pages/DoctorNotePage'
 import { HandoffPage } from './pages/HandoffPage'
 import { HomePage } from './pages/HomePage'
 import { LogPage } from './pages/LogPage'
 
 // Routes double as NFC tag URLs:
-//   /checkin           <- door tag
+//   /checkin?tag=<DOOR_TAG_ID>  <- door tag (the only way to check in: EVV)
 //   /log/<deviceId>    <- device tags (vest, nebulizer, feeding-pump, trikafta)
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           <Route path="/checkin" element={<CheckInPage />} />
           <Route path="/log/:deviceId" element={<LogPage />} />
           <Route path="/handoff" element={<HandoffPage />} />
+          <Route path="/doctor-note" element={<DoctorNotePage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>
       </BrowserRouter>
