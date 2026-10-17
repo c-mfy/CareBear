@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { formatDateTime } from '../lib/format'
 import { useStore } from '../lib/store'
 import { BulletList } from './SummaryCard'
-import { Dot } from './ui'
+import { Dot, FlagMark } from './ui'
 
 /** Patient history: previous handoff summaries. Tap one to expand it. */
 export function HistoryList() {
@@ -38,7 +38,10 @@ export function HistoryList() {
               className="flex min-h-12 w-full items-center gap-2.5 px-4 py-3 text-left"
             >
               <Dot color={color} />
-              <span className="flex-1 text-sm font-semibold">{name}</span>
+              <span className="flex flex-1 items-center gap-1.5 text-sm font-semibold">
+                {name}
+                {h.flagged && <FlagMark />}
+              </span>
               <span className="text-xs text-cocoa">
                 {formatDateTime(h.start)} – {formatDateTime(h.end)}
               </span>

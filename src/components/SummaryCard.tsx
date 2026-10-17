@@ -1,7 +1,8 @@
+import { cx } from '../lib/cx'
 import { formatDateTime } from '../lib/format'
 import { useCaregiver, useStore } from '../lib/store'
 import type { Handoff } from '../types'
-import { Card, Tag } from './ui'
+import { Card, FlagMark, Tag } from './ui'
 
 export function BulletList({ bullets }: { bullets: string[] }) {
   return (
@@ -23,14 +24,20 @@ function HandoffCard({ handoff }: { handoff: Handoff }) {
     name = caregiver.name
   }
   return (
-    <Card className="border-l-[5px] border-teal">
+    <Card className={cx('border-l-[5px]', handoff.flagged ? 'border-rose' : 'border-teal')}>
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-bold">{name}'s summary</h2>
+        <h2 className="flex items-center gap-1.5 text-sm font-bold">
+          {handoff.flagged && <FlagMark />}
+          {name}'s summary
+        </h2>
         <Tag className="bg-mist text-teal">✦ AI summary</Tag>
       </div>
       <p className="mb-2 text-xs text-cocoa">
         {formatDateTime(handoff.start)} – {formatDateTime(handoff.end)}
       </p>
+      {handoff.flagged && (
+        <p className="mb-2 text-xs font-semibold text-rose">Flagged as abnormal by {name}</p>
+      )}
       <BulletList bullets={handoff.summaryBullets} />
     </Card>
   )

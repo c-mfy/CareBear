@@ -10,7 +10,7 @@ interface Store {
   addCaregiver: (name: string) => Caregiver
   checkIn: (caregiverId: string, tagId: string) => void
   addLog: (deviceId: string, sessionId: string, values: Record<string, FieldValue>) => void
-  completeHandoff: (overallNotes: string, summaryBullets: string[]) => void
+  completeHandoff: (overallNotes: string, summaryBullets: string[], flagged: boolean) => void
   shiftLogs: () => LogEntry[]
   setLastDoctorVisit: (date: string) => void
   resetDemo: () => void
@@ -75,7 +75,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  function completeHandoff(overallNotes: string, summaryBullets: string[]) {
+  function completeHandoff(overallNotes: string, summaryBullets: string[], flagged: boolean) {
     const shift = state.currentShift
     if (!shift) {
       return
@@ -89,6 +89,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       logIds: shiftLogs().map((l) => l.id),
       summaryBullets,
       tagId: shift.tagId,
+      flagged,
     }
     // Logs the caregiver out of the team (ends the shift)
     setState((s) => ({ ...s, currentShift: null, handoffs: [handoff, ...s.handoffs] }))

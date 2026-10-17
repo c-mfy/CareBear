@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { Header } from '../components/Header'
 import { BulletList } from '../components/SummaryCard'
 import { DeviceIcon } from '../components/icons'
-import { Button, Card, Dot, Page, Section, Tag } from '../components/ui'
+import { Button, Card, Dot, FlagMark, Page, Section, Tag } from '../components/ui'
 import { getDevice } from '../data/patient'
 import { getShiftSummary } from '../lib/ai-client'
+import { cx } from '../lib/cx'
 import { describeLog, formatTime, logNotes } from '../lib/format'
 import { useStore } from '../lib/store'
 
@@ -14,6 +15,7 @@ export function HandoffPage() {
   const { state, onShift, shiftLogs, completeHandoff } = useStore()
   const navigate = useNavigate()
   const [overallNotes, setOverallNotes] = useState('')
+  const [flagged, setFlagged] = useState(false)
   const [bullets, setBullets] = useState<string[] | null>(null)
   const [editingSummary, setEditingSummary] = useState(false)
   const [draftSummary, setDraftSummary] = useState('')
@@ -71,7 +73,7 @@ export function HandoffPage() {
     if (!bullets) {
       return
     }
-    completeHandoff(overallNotes, bullets)
+    completeHandoff(overallNotes, bullets, flagged)
     navigate('/')
   }
 
@@ -176,6 +178,21 @@ export function HandoffPage() {
             rows={3}
             className="w-full rounded-2xl bg-white p-4 text-sm outline-none"
           />
+          <button
+            onClick={() => setFlagged(!flagged)}
+            aria-pressed={flagged}
+            className={cx(
+              'mt-2 flex min-h-12 w-full items-center gap-3 rounded-2xl px-4 text-left text-sm font-semibold',
+              flagged && 'bg-rose text-white',
+              !flagged && 'border-[1.5px] border-dashed border-rose bg-white text-brown',
+            )}
+          >
+            <FlagMark className={cx(flagged && 'bg-white text-rose')} />
+            <span className="flex-1">
+              {flagged ? 'Flagged: something abnormal this shift' : 'Flag something abnormal this shift'}
+            </span>
+            <span className="text-xs font-medium">{flagged ? 'Undo' : 'Tap to flag'}</span>
+          </button>
         </Section>
 
         <div className="mt-4 space-y-3">

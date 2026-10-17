@@ -70,6 +70,8 @@ export interface Handoff {
   summaryBullets: string[]
   /** EVV: door tag used to check in for this shift (missing on seed/older data) */
   tagId?: string
+  /** Outgoing caregiver marked something abnormal this shift */
+  flagged?: boolean
 }
 
 export interface AppState {

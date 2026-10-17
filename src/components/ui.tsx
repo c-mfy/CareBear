@@ -48,6 +48,23 @@ export function Tag({ children, className }: { children: ReactNode; className?: 
   )
 }
 
+/** Red "!" marking a handoff flagged as abnormal. */
+export function FlagMark({ className }: { className?: string }) {
+  return (
+    <span
+      role="img"
+      aria-label="Flagged as abnormal"
+      title="Flagged as abnormal"
+      className={cx(
+        'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose text-xs font-extrabold text-white',
+        className,
+      )}
+    >
+      !
+    </span>
+  )
+}
+
 export function Dot({ color }: { color: string }) {
   return <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color }} />
 }
