@@ -84,7 +84,7 @@ export function buildDoctorPdf(report: DoctorReport, sections: NoteSection[]): j
     ['Report period', `${period}  (${report.days} days, since last visit)`],
     ['Care team (entries)', careTeam],
     ['G-tube button', gtube],
-    ['Shift verification', `${evvShifts} of ${report.shifts.length} shifts checked in at the home's door tag (EVV)`],
+    ['Shift verification', `${evvShifts} of ${report.shifts.length} shifts verified at the home's door tag at check-in and check-out (EVV)`],
   ]
   autoTable(doc, {
     startY: y,

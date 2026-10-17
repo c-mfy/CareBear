@@ -1,27 +1,42 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Header } from '../components/Header'
 import { BulletList } from '../components/SummaryCard'
 import { DeviceIcon } from '../components/icons'
 import { Button, Card, Dot, FlagMark, Page, Section, Tag } from '../components/ui'
-import { getDevice } from '../data/patient'
+import { DOOR_TAG_ID, getDevice } from '../data/patient'
 import { getShiftSummary } from '../lib/ai-client'
 import { cx } from '../lib/cx'
 import { describeLog, formatTime, logNotes } from '../lib/format'
+import { clearHandoffDraft, loadHandoffDraft, saveHandoffDraft } from '../lib/storage'
 import { useStore } from '../lib/store'
 import { describeOverdue, overdueDuringShift } from '../lib/tasks'
 
-/** End-of-shift handoff: review logs, add overall notes, generate summary, check out. */
+/**
+ * End-of-shift handoff: review logs, add overall notes, generate summary, check out.
+ * EVV: checking out needs the door tag (/handoff?tag=<DOOR_TAG_ID>, reached by tapping the door tag while
+ * on shift). Without it, the caregiver can still write the summary; it's kept as a draft until they tap.
+ */
 export function HandoffPage() {
   const { state, onShift, shiftLogs, completeHandoff } = useStore()
   const navigate = useNavigate()
-  const [overallNotes, setOverallNotes] = useState('')
+  const [params] = useSearchParams()
+  const checkoutVerified = params.get('tag') === DOOR_TAG_ID
+  const shiftStart = state.currentShift?.start || ''
+  const [draft] = useState(() => loadHandoffDraft(shiftStart))
+  const [overallNotes, setOverallNotes] = useState(draft?.overallNotes || '')
   // null = caregiver hasn't touched the flag, so it follows the overdue check
-  const [flagChoice, setFlagChoice] = useState<boolean | null>(null)
-  const [bullets, setBullets] = useState<string[] | null>(null)
+  const [flagChoice, setFlagChoice] = useState<boolean | null>(draft?.flagChoice ?? null)
+  const [bullets, setBullets] = useState<string[] | null>(draft?.bullets || null)
   const [editingSummary, setEditingSummary] = useState(false)
   const [draftSummary, setDraftSummary] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (shiftStart) {
+      saveHandoffDraft({ shiftStart, overallNotes, bullets, flagChoice })
+    }
+  }, [shiftStart, overallNotes, bullets, flagChoice])
 
   if (!onShift) {
     return (
@@ -75,11 +90,12 @@ export function HandoffPage() {
   }
 
   function handleConfirm() {
-    if (!bullets) {
+    if (!bullets || !checkoutVerified) {
       return
     }
-    completeHandoff(overallNotes, bullets, flagged, overdueReasons)
-    navigate('/')
+    completeHandoff(overallNotes, bullets, flagged, overdueReasons, DOOR_TAG_ID)
+    clearHandoffDraft()
+    navigate('/', { replace: true })
   }
 
   let generateLabel = 'Generate summary'
@@ -107,7 +123,13 @@ export function HandoffPage() {
   // Buttons under the summary
   let summaryActions = (
     <>
-      <Button onClick={handleConfirm}>Hand off & check out ✓</Button>
+      {checkoutVerified && <Button onClick={handleConfirm}>Hand off & check out ✓</Button>}
+      {!checkoutVerified && (
+        <div className="rounded-2xl bg-brown px-4 py-3 text-center text-white">
+          <p className="font-semibold">📲 Tap the door tag to check out</p>
+          <p className="mt-0.5 text-xs opacity-80">Your notes and summary are saved until you tap.</p>
+        </div>
+      )}
       <div className="flex gap-3">
         <Button variant="ghost" onClick={handleEdit}>
           Edit summary
@@ -147,6 +169,12 @@ export function HandoffPage() {
             </span>
           </div>
           <p className="mt-1 text-xs font-semibold text-teal">✓ Checked in at door tag (EVV)</p>
+          {checkoutVerified && (
+            <p className="text-xs font-semibold text-teal">✓ Door tag tapped: ready to check out</p>
+          )}
+          {!checkoutVerified && (
+            <p className="text-xs text-cocoa">Write your summary, then tap the door tag to check out.</p>
+          )}
         </Card>
 
         <Section title="Logged this shift">

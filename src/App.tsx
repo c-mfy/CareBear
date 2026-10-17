@@ -7,7 +7,7 @@ import { HomePage } from './pages/HomePage'
 import { LogPage } from './pages/LogPage'
 
 // Routes double as NFC tag URLs:
-//   /checkin?tag=<DOOR_TAG_ID>  <- door tag (the only way to check in: EVV)
+//   /checkin?tag=<DOOR_TAG_ID>  <- door tag: checks in, or if someone is on shift, opens their handoff to check out (EVV)
 //   /log/<deviceId>    <- device tags (vest, nebulizer, feeding-pump, trikafta)
 export default function App() {
   return (

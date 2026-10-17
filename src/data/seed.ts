@@ -101,7 +101,8 @@ export function makeSeed(now: Date = new Date()): AppState {
       overallNotes,
       logIds: unique.map((l) => l.id),
       summaryBullets: mockSummary(unique, overallNotes),
-      tagId: DOOR_TAG_ID, // seed shifts count as checked in at the door
+      tagId: DOOR_TAG_ID, // seed shifts count as checked in and out at the door
+      checkoutTagId: DOOR_TAG_ID,
     })
     end = start
   }

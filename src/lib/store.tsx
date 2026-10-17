@@ -10,7 +10,13 @@ interface Store {
   addCaregiver: (name: string) => Caregiver
   checkIn: (caregiverId: string, tagId: string) => void
   addLog: (deviceId: string, sessionId: string, values: Record<string, FieldValue>) => void
-  completeHandoff: (overallNotes: string, summaryBullets: string[], flagged: boolean, flagReasons: string[]) => void
+  completeHandoff: (
+    overallNotes: string,
+    summaryBullets: string[],
+    flagged: boolean,
+    flagReasons: string[],
+    checkoutTagId: string,
+  ) => void
   shiftLogs: () => LogEntry[]
   setLastDoctorVisit: (date: string) => void
   resetDemo: () => void
@@ -75,7 +81,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     )
   }
 
-  function completeHandoff(overallNotes: string, summaryBullets: string[], flagged: boolean, flagReasons: string[]) {
+  /** EVV: only call with a door tag id that matched DOOR_TAG_ID */
+  function completeHandoff(
+    overallNotes: string,
+    summaryBullets: string[],
+    flagged: boolean,
+    flagReasons: string[],
+    checkoutTagId: string,
+  ) {
     const shift = state.currentShift
     if (!shift) {
       return
@@ -89,6 +102,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       logIds: shiftLogs().map((l) => l.id),
       summaryBullets,
       tagId: shift.tagId,
+      checkoutTagId,
       flagged,
       flagReasons: flagged ? flagReasons : [],
     }

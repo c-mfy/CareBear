@@ -72,6 +72,8 @@ export interface Handoff {
   summaryBullets: string[]
   /** EVV: door tag used to check in for this shift (missing on seed/older data) */
   tagId?: string
+  /** EVV: door tag tapped to check out (same tag as check-in) */
+  checkoutTagId?: string
   /** Abnormal shift: auto-set when something went overdue, caregiver can also set/unset it */
   flagged?: boolean
   /** Why it was auto-flagged, e.g. "Vest · Morning session: not done (due 7:15 AM)" */

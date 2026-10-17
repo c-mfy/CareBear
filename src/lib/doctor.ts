@@ -50,7 +50,7 @@ export interface DoctorReport {
   notes: NoteEntry[]
   handoffNotes: NoteEntry[]
   logsByCaregiver: { name: string; count: number }[]
-  /** Shifts in the period; verified = started from the door tag (EVV) */
+  /** Shifts in the period; verified = door tag tapped at check-in and check-out (EVV) */
   shifts: { caregiver: string; start: string; verified: boolean }[]
   gtube: { lastChange: string; due: string; replacedInPeriod: string[] }
 }
@@ -169,13 +169,24 @@ export function buildDoctorReport(state: AppState, now: Date = new Date()): Doct
     handoffNotes,
     logsByCaregiver: [...counts].map(([name, count]) => ({ name, count })),
     shifts: [
-      ...state.handoffs.filter((h) => new Date(h.end) >= since),
-      ...(state.currentShift ? [state.currentShift] : []),
-    ].map((s) => ({
-      caregiver: caregiverName(state.caregivers, s.caregiverId),
-      start: s.start,
-      verified: s.tagId === DOOR_TAG_ID,
-    })),
+      ...state.handoffs
+        .filter((h) => new Date(h.end) >= since)
+        .map((h) => ({
+          caregiver: caregiverName(state.caregivers, h.caregiverId),
+          start: h.start,
+          verified: h.tagId === DOOR_TAG_ID && h.checkoutTagId === DOOR_TAG_ID,
+        })),
+      // the shift still in progress hasn't checked out yet, so only its check-in counts
+      ...(state.currentShift
+        ? [
+            {
+              caregiver: caregiverName(state.caregivers, state.currentShift.caregiverId),
+              start: state.currentShift.start,
+              verified: state.currentShift.tagId === DOOR_TAG_ID,
+            },
+          ]
+        : []),
+    ],
     gtube: {
       lastChange: formatDate(fromDateInput(patient.lastGtubeButtonChange)),
       due: formatDate(quarterlyDueDate(patient.lastGtubeButtonChange)),

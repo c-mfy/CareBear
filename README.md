@@ -31,7 +31,7 @@ Stack: React + Vite + TypeScript + Tailwind v4, FullCalendar (week view), one Ve
 
 Rules:
 - One caregiver is on shift at a time.
-- **EVV:** a shift can only start by tapping the door tag. There is no check-in button in the app. The door tag id is saved on the shift and its handoff.
+- **EVV:** the door tag both starts and ends a shift. Tapping it with nobody on shift checks in; tapping it while someone is on shift opens their handoff, and **Hand off & check out** only works after that tap. There is no check-in or check-out button in the app. Both taps are saved on the handoff. The handoff can be written before the tap; the draft is kept until checkout.
 - Tapping a device tag while nobody is checked in sends you to check-in, then straight back to that device.
 - The session is auto-picked by time of day, and you can change it with the session buttons:
   - before noon: morning

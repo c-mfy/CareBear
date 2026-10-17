@@ -1,4 +1,4 @@
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { CaregiverPicker } from '../components/CaregiverPicker'
 import { Header } from '../components/Header'
 import { Card, Page } from '../components/ui'
@@ -10,6 +10,7 @@ import type { Caregiver } from '../types'
  * DOOR TAG lands here: /checkin?tag=<DOOR_TAG_ID>.
  * EVV: a shift can only start from the door tag, which proves the caregiver is at the home.
  * Opening /checkin any other way (a link, a device tag before check-in) shows "tap the door tag".
+ * The same tag checks out: tapped while someone is on shift, it opens their (verified) handoff.
  */
 export function CheckInPage() {
   const { onShift, checkIn } = useStore()
@@ -28,6 +29,10 @@ export function CheckInPage() {
     navigate(next, { replace: true })
   }
 
+  if (onShift && tagValid) {
+    return <Navigate to={`/handoff?tag=${DOOR_TAG_ID}`} replace />
+  }
+
   if (onShift) {
     return (
       <Page>
@@ -35,7 +40,8 @@ export function CheckInPage() {
         <main className="px-4 pt-3">
           <Card className="space-y-3">
             <p className="text-sm">
-              <b>{onShift.name}</b> is still on shift. They need to hand off before someone else checks in.
+              <b>{onShift.name}</b> is still on shift. They need to hand off and tap the door tag to check out
+              before someone else checks in.
             </p>
             <Link to="/handoff" className="flex min-h-12 items-center justify-center rounded-full bg-teal font-semibold text-white">
               Go to handoff
