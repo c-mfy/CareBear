@@ -20,6 +20,8 @@ interface Store {
   shiftLogs: () => LogEntry[]
   setLastDoctorVisit: (date: string) => void
   removeCaregiver: (id: string) => void
+  deleteHandoff: (id: string) => void
+  exitShift: () => void
   resetDemo: () => void
 }
 
@@ -122,6 +124,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }))
   }
 
+  /**
+   * End the shift without a handoff (testing, or checked in by mistake). No visit is recorded, so anything
+   * logged this shift is deleted too rather than left without a visit.
+   */
+  function exitShift() {
+    const ids = shiftLogs().map((l) => l.id)
+    setState((s) => ({ ...s, currentShift: null, logs: s.logs.filter((l) => !ids.includes(l.id)) }))
+  }
+
+  /** Delete a past visit and the care entries logged during it */
+  function deleteHandoff(id: string) {
+    setState((s) => {
+      const handoff = s.handoffs.find((h) => h.id === id)
+      if (!handoff) {
+        return s
+      }
+      return {
+        ...s,
+        handoffs: s.handoffs.filter((h) => h.id !== id),
+        logs: s.logs.filter((l) => !handoff.logIds.includes(l.id)),
+      }
+    })
+  }
+
   function setLastDoctorVisit(date: string) {
     setState((s) => ({ ...s, lastDoctorVisit: date }))
   }
@@ -140,6 +166,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     shiftLogs,
     setLastDoctorVisit,
     removeCaregiver,
+    deleteHandoff,
+    exitShift,
     resetDemo,
   }
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

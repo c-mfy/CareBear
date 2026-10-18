@@ -18,7 +18,7 @@ import { describeOverdue, overdueDuringShift } from '../lib/tasks'
  * on shift). Without it, the caregiver can still write the summary; it's kept as a draft until they tap.
  */
 export function HandoffPage() {
-  const { state, onShift, shiftLogs, completeHandoff } = useStore()
+  const { state, onShift, shiftLogs, completeHandoff, exitShift } = useStore()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const checkoutVerified = params.get('tag') === DOOR_TAG_ID
@@ -31,6 +31,7 @@ export function HandoffPage() {
   const [editingSummary, setEditingSummary] = useState(false)
   const [draftSummary, setDraftSummary] = useState('')
   const [loading, setLoading] = useState(false)
+  const [confirmExit, setConfirmExit] = useState(false)
 
   useEffect(() => {
     if (shiftStart) {
@@ -174,6 +175,40 @@ export function HandoffPage() {
           )}
           {!checkoutVerified && (
             <p className="text-xs text-cocoa">Write your summary, then tap the door tag to check out.</p>
+          )}
+          {!confirmExit && (
+            <button onClick={() => setConfirmExit(true)} className="mt-2 min-h-9 text-xs font-semibold text-cocoa underline">
+              Exit without handing off
+            </button>
+          )}
+          {confirmExit && (
+            <div className="mt-2 rounded-xl bg-lilac px-3 py-2.5 text-sm">
+              <p>
+                {logs.length === 0
+                  ? 'End this shift without a handoff? No visit will be recorded.'
+                  : `End this shift without a handoff? No visit will be recorded, and the ${logs.length} ${
+                      logs.length === 1 ? 'entry' : 'entries'
+                    } logged this shift will be deleted.`}
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={() => {
+                    exitShift()
+                    clearHandoffDraft()
+                    navigate('/', { replace: true })
+                  }}
+                  className="min-h-10 flex-1 rounded-full bg-brown font-semibold text-white"
+                >
+                  Exit shift
+                </button>
+                <button
+                  onClick={() => setConfirmExit(false)}
+                  className="min-h-10 flex-1 rounded-full border-[1.5px] border-aqua bg-white font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           )}
         </Card>
 

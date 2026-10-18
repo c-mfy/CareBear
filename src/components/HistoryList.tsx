@@ -10,12 +10,14 @@ import { Dot, FlagMark } from './ui'
  * limit: show only the newest few, with a link to the full history page.
  */
 export function HistoryList({ limit }: { limit?: number }) {
-  const { state } = useStore()
+  const { state, deleteHandoff } = useStore()
   const [openId, setOpenId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const handoffs = limit ? state.handoffs.slice(0, limit) : state.handoffs
   const hidden = state.handoffs.length - handoffs.length
 
   function toggle(id: string) {
+    setConfirmDeleteId(null)
     if (openId === id) {
       setOpenId(null)
     } else {
@@ -66,6 +68,40 @@ export function HistoryList({ limit }: { limit?: number }) {
                   </div>
                 )}
                 <BulletList bullets={h.summaryBullets} />
+                {confirmDeleteId !== h.id && (
+                  <button
+                    onClick={() => setConfirmDeleteId(h.id)}
+                    className="mt-3 min-h-9 text-xs font-semibold text-rose underline"
+                  >
+                    Delete this visit
+                  </button>
+                )}
+                {confirmDeleteId === h.id && (
+                  <div className="mt-3 rounded-xl bg-lilac px-3 py-2.5 text-sm">
+                    <p>
+                      Delete {name}'s visit and the {h.logIds.length} {h.logIds.length === 1 ? 'entry' : 'entries'} logged
+                      during it? This can't be undone.
+                    </p>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() => {
+                          deleteHandoff(h.id)
+                          setConfirmDeleteId(null)
+                          setOpenId(null)
+                        }}
+                        className="min-h-10 flex-1 rounded-full bg-rose font-semibold text-white"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="min-h-10 flex-1 rounded-full border-[1.5px] border-aqua bg-white font-semibold"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
