@@ -1,5 +1,6 @@
 import { useLayoutEffect } from 'react'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { CelebrateOverlay } from './components/CelebrateOverlay'
 import { WelcomeOverlay } from './components/WelcomeOverlay'
 import { StoreProvider } from './lib/store'
 import { CheckInPage } from './pages/CheckInPage'
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="*" element={<HomePage />} />
         </Routes>
         <WelcomeOverlay />
+        <CelebrateOverlay />
       </BrowserRouter>
     </StoreProvider>
   )

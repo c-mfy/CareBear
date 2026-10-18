@@ -11,6 +11,8 @@ import { pickSession, quarterlyDueDate } from '../lib/sessions'
 import { findDoseConflict, type DoseConflict } from '../lib/dose-check'
 import { describeLog, formatMinutes, formatScheduled, formatTime } from '../lib/format'
 import { useStore } from '../lib/store'
+import { buildTodayTasks } from '../lib/tasks'
+import { showCelebration } from '../lib/welcome'
 import type { FieldValue, Suggestion } from '../types'
 
 /** DEVICE TAGS land here: /log/<deviceId>. Tap-to-log flow. */
@@ -93,7 +95,31 @@ export function LogPage() {
       return
     }
     addLog(device.id, session.id, values)
+    celebrate(device.id, device.name, session.id)
     navigate('/')
+  }
+
+  /** Kuma's "done!" scene: what was logged, when, and today's progress including this entry. */
+  function celebrate(logDeviceId: string, deviceName: string, logSessionId: string) {
+    const now = new Date()
+    const justLogged = {
+      id: 'just-logged',
+      deviceId: logDeviceId,
+      sessionId: logSessionId,
+      caregiverId: '',
+      timestamp: now.toISOString(),
+      values: {},
+    }
+    const tasks = buildTodayTasks([...state.logs, justLogged], now)
+    const doneCount = tasks.filter((t) => t.done).length
+    if (tasks.length > 0 && doneCount === tasks.length) {
+      showCelebration({ title: 'All done for today!', subtitle: 'Kuma is so proud of you.' })
+      return
+    }
+    showCelebration({
+      title: `${deviceName} done!`,
+      subtitle: `Logged at ${formatTime(now.toISOString())} · ${doneCount} of ${tasks.length} today`,
+    })
   }
 
   let scheduled = ''
