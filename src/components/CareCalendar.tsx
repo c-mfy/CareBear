@@ -115,7 +115,7 @@ export function CareCalendar() {
   const selectedTask = planned.find((t) => t.id === selectedId)
 
   return (
-    <Card className="p-2">
+    <Card className="p-3">
       <div className="mb-2 flex flex-wrap gap-3 px-1 text-xs font-medium text-cocoa">
         {state.caregivers.filter((c) => !c.removed || state.logs.some((l) => l.caregiverId === c.id)).map((c) => (
           <span key={c.id} className="flex items-center gap-1">
@@ -222,7 +222,7 @@ function PlannedDetail({ task, now, onClose }: { task: PlannedTask; now: Date; o
         <Link
           to={`/log/${task.deviceId}`}
           state={{ sessionId: task.sessionId }}
-          className="mt-2 flex min-h-10 items-center justify-center rounded-full bg-teal text-sm font-semibold text-white"
+          className="mt-2 flex min-h-10 items-center justify-center rounded-full bg-sea text-sm font-bold text-white"
         >
           Log it now
         </Link>

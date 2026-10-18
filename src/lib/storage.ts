@@ -4,6 +4,9 @@ import type { AppState } from '../types'
 
 const KEY = 'care-handoff-v1'
 
+/** Old caregiver colors -> the matching Figma colors */
+const FIGMA_COLORS: Record<string, string> = { '#f392ba': '#f392b9', '#1bb3b0': '#6fbec1' }
+
 export function loadState(): AppState {
   try {
     const raw = localStorage.getItem(KEY)
@@ -20,6 +23,11 @@ export function loadState(): AppState {
       for (const c of saved.caregivers) {
         // saved before caregiver roles existed: seed caregivers get their seed role
         c.role ??= seedCaregivers.find((s) => s.id === c.id)?.role
+        // saved before the Figma colors: use the new pink / teal
+        const newColor = FIGMA_COLORS[c.color]
+        if (newColor) {
+          c.color = newColor
+        }
       }
       return saved
     }

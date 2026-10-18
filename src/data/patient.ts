@@ -167,4 +167,4 @@ export function getDevice(id: string): Device | undefined {
 }
 
 // Colors handed out to newly added caregivers, in order (calendar colors).
-export const caregiverColors = ['#f392ba', '#1bb3b0', '#755339', '#6ebec1', '#f7c2dd', '#b9f1ee']
+export const caregiverColors = ['#f392b9', '#6fbec1', '#755339', '#6ebec1', '#f7c2dd', '#b9f1ee']

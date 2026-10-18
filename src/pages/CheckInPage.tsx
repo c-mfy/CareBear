@@ -1,11 +1,32 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { CaregiverPicker } from '../components/CaregiverPicker'
-import { Header } from '../components/Header'
-import { Card, Page } from '../components/ui'
+import { Kuma } from '../components/Kuma'
 import { DOOR_TAG_ID } from '../data/patient'
 import { useStore } from '../lib/store'
 import type { Caregiver } from '../types'
+
+/**
+ * Figma check-in layout: a centered white card with waving Kuma peeking over its top-left corner,
+ * and "CareBearHealth" at the bottom of the screen.
+ */
+function CheckInShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col px-[25px]">
+      <main className="flex flex-1 items-center py-10">
+        <div className="relative mt-[76px] w-full rounded-[22px] bg-white px-[19px] pt-4 pb-4 text-center">
+          <Kuma mood="wave" className="absolute -top-[76px] left-0" />
+          {children}
+        </div>
+      </main>
+      <footer className="pb-8 text-center text-base">CareBearHealth</footer>
+    </div>
+  )
+}
+
+function Title({ children }: { children: ReactNode }) {
+  return <h1 className="font-display text-lg font-bold">{children}</h1>
+}
 
 /**
  * DOOR TAG lands here: /checkin?tag=<DOOR_TAG_ID>.
@@ -39,61 +60,47 @@ export function CheckInPage() {
 
   if (onShift) {
     return (
-      <Page>
-        <Header title="Check in" back />
-        <main className="px-4 pt-3">
-          <Card className="space-y-3">
-            <p className="text-sm">
-              <b>{onShift.name}</b> is still on shift. They need to hand off and tap the door tag to check out
-              before someone else checks in.
-            </p>
-            <Link to="/handoff" className="flex min-h-12 items-center justify-center rounded-full bg-teal font-semibold text-white">
-              Go to handoff
-            </Link>
-            <Link
-              to={next}
-              className="flex min-h-12 items-center justify-center rounded-full border-[1.5px] border-aqua font-semibold"
-            >
-              Continue as {onShift.name}
-            </Link>
-          </Card>
-        </main>
-      </Page>
+      <CheckInShell>
+        <Title>Check In</Title>
+        <p className="mt-3 text-base">
+          <b>{onShift.name}</b> is still on shift. They need to hand off and tap Kuma to check out before
+          someone else checks in.
+        </p>
+        <div className="mt-4 space-y-2">
+          <Link to="/handoff" className="flex min-h-12 items-center justify-center rounded-full bg-cocoa font-display font-bold text-white">
+            Go to handoff
+          </Link>
+          <Link
+            to={next}
+            className="flex min-h-12 items-center justify-center rounded-full border-[1.5px] border-blush font-display font-bold"
+          >
+            Continue as {onShift.name}
+          </Link>
+        </div>
+      </CheckInShell>
     )
   }
 
   if (!tagValid) {
     return (
-      <Page>
-        <Header title="Check in" back />
-        <main className="px-4 pt-3">
-          <Card className="space-y-2 text-center">
-            <div className="text-4xl">📲</div>
-            <h2 className="text-xl font-bold">Tap the door tag to check in</h2>
-            <p className="text-sm text-cocoa">
-              Shifts can only start from the NFC tag by the front door. This verifies you're at the home
-              (EVV).
-            </p>
-            {params.get('next') && (
-              <p className="text-sm text-cocoa">After you check in, tap the device tag again to log it.</p>
-            )}
-          </Card>
-        </main>
-      </Page>
+      <CheckInShell>
+        <Title>Check In</Title>
+        <p className="mt-3 text-base">
+          Tap your phone on Kuma to check in! CareBear uses EVV to make sure you’re a verified caretaker.
+        </p>
+        <p className="mt-5 text-base">After you check in, tap a device tag to log it.</p>
+      </CheckInShell>
     )
   }
 
   return (
-    <Page>
-      <Header title="Check in" back />
-      <main className="px-4 pt-3">
-        <p className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-mist px-3 py-1 text-xs font-semibold text-teal">
-          ✓ Door tag verified
-        </p>
-        <h2 className="text-2xl font-bold">Who's logging?</h2>
-        <p className="mb-4 text-sm text-cocoa">Pick your name to start your shift.</p>
+    <CheckInShell>
+      <Title>Check In</Title>
+      <p className="mt-1 text-sm font-bold text-sea">✓ Kuma tapped, you’re at the home</p>
+      <p className="mt-3 mb-4 text-base">Who’s logging? Pick your name to start your shift.</p>
+      <div className="text-left">
         <CaregiverPicker onPick={handlePick} />
-      </main>
-    </Page>
+      </div>
+    </CheckInShell>
   )
 }

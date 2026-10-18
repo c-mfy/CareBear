@@ -3,16 +3,17 @@ import { CareCalendar } from '../components/CareCalendar'
 import { CareTeam } from '../components/CareTeam'
 import { Header } from '../components/Header'
 import { HistoryList } from '../components/HistoryList'
+import { Kuma } from '../components/Kuma'
 import { SummaryCard } from '../components/SummaryCard'
 import { TaskList } from '../components/TaskList'
-import { BottomBar, Card, Page, Section } from '../components/ui'
+import { Page, PillBar, Section } from '../components/ui'
 import { patient } from '../data/patient'
-import { useStore } from '../lib/store'
 import { formatMinutes } from '../lib/format'
+import { useStore } from '../lib/store'
 import { buildTodayTasks } from '../lib/tasks'
 import { useNow } from '../lib/useNow'
 
-/** Single scrolling page, laid out like the low-fi home screen. */
+/** Single scrolling page, laid out like the Figma home screen. */
 export function HomePage() {
   const { state, onShift, resetDemo } = useStore()
   const now = useNow() // re-renders every minute so tasks turn overdue on their own
@@ -27,81 +28,79 @@ export function HomePage() {
     }
   }
 
-  let bar = (
-    <BottomBar>
-      <span className="text-sm">No one on shift</span>
-      <span className="flex min-h-11 items-center rounded-full bg-teal px-5 text-sm">Tap door tag to check in</span>
-    </BottomBar>
-  )
+  // Kuma is sad while anything is overdue, proud otherwise
+  let mood: 'sad' | 'proud' = 'proud'
+  if (overdue.length > 0) {
+    mood = 'sad'
+  }
+
+  let overdueTitle = `${overdue.length} overdue tasks`
+  if (overdue.length === 1) {
+    overdueTitle = '1 overdue task'
+  }
+
+  let bar = <PillBar>Tap door tag to check in</PillBar>
   if (onShift) {
     bar = (
-      <BottomBar>
-        <span className="truncate text-sm">{onShift.name} on shift</span>
-        <Link to="/handoff" className="flex min-h-11 shrink-0 items-center rounded-full bg-teal px-5 text-sm">
-          Hand off shift →
+      <PillBar>
+        <Link to="/handoff" className="flex w-full flex-col items-center leading-tight">
+          <span className="font-body text-xs font-bold text-white/80">{onShift.name} on shift</span>
+          <span>Hand off shift →</span>
         </Link>
-      </BottomBar>
+      </PillBar>
     )
   }
 
   return (
     <Page bottomBar>
       <Header />
-      <main className="px-4">
-        {/* Patient header */}
-        <Card className="mt-2 flex items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blush text-xl font-bold">
-            {patient.nickname.charAt(0)}
-          </div>
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl leading-tight font-bold">{patient.nickname}</h1>
-            <p className="text-xs text-cocoa">
-              {patient.age} yrs · {condition}
+      <main className="px-[25px]">
+        {/* Patient name, with Kuma sitting on the overdue banner */}
+        <div className="flex items-start justify-between">
+          <div className="pt-1 pl-[3px]">
+            <h1 className="font-display text-[32px] leading-tight font-bold text-sea">{patient.nickname}</h1>
+            <p className="text-base">
+              {patient.age} yrs | {condition}
             </p>
           </div>
-          <Link
-            to="/emergency"
-            className="flex min-h-11 shrink-0 items-center gap-1 rounded-full bg-[#d6336c] px-4 text-sm font-bold text-white"
-          >
-            Emergency
-          </Link>
-        </Card>
-
-        <div className="mt-2.5">
-          <SummaryCard />
+          <Kuma mood={mood} className="relative z-10 mt-[31px] mr-[25px]" />
         </div>
 
+        {overdue.length > 0 && (
+          <div role="alert" className="-mt-[35px] rounded-[22px] bg-rose px-[21px] pt-[13px] pb-[14px] text-white">
+            <p className="text-xl leading-tight font-black uppercase">{overdueTitle}</p>
+            <ul className="mt-1.5 space-y-1">
+              {overdue.map((t) => (
+                <li key={`${t.deviceId}-${t.sessionId}`}>
+                  <Link
+                    to={`/log/${t.deviceId}`}
+                    state={{ sessionId: t.sessionId }}
+                    className="flex items-center justify-between gap-2 text-xs font-bold"
+                  >
+                    <span className="flex items-center gap-2 pl-3">
+                      <span className="h-1 w-1 shrink-0 rounded-full bg-white" />
+                      {t.title} | {t.label}
+                    </span>
+                    <span className="shrink-0">{formatMinutes(t.overdueMinutes)} late &gt;</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <Section title="Summary">
+          <SummaryCard />
+        </Section>
+
         <Section
-          title="Today's Care"
-          right={
-            <span className="text-xs font-semibold text-cocoa">
+          title="Today’s Care"
+          titleExtra={
+            <span className="text-xs font-black text-sea">
               {doneCount} of {tasks.length} complete
             </span>
           }
         >
-          {overdue.length > 0 && (
-            <div role="alert" className="mb-2 rounded-[18px] bg-rose px-4 py-3 text-white">
-              <p className="text-sm font-bold">
-                ⚠ {overdue.length} overdue {overdue.length === 1 ? 'task' : 'tasks'}
-              </p>
-              <ul className="mt-1.5 space-y-1">
-                {overdue.map((t) => (
-                  <li key={`${t.deviceId}-${t.sessionId}`}>
-                    <Link
-                      to={`/log/${t.deviceId}`}
-                      state={{ sessionId: t.sessionId }}
-                      className="flex min-h-9 items-center justify-between gap-2 text-[13px]"
-                    >
-                      <span className="font-semibold">
-                        {t.title} · {t.label}
-                      </span>
-                      <span className="shrink-0 text-xs">{formatMinutes(t.overdueMinutes)} late ›</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
           <TaskList now={now} />
         </Section>
 
@@ -109,13 +108,13 @@ export function HomePage() {
           <CareCalendar />
         </Section>
 
-        <Section title="Patient History">
-          <HistoryList limit={6} />
+        <Section title="Care History">
+          <HistoryList limit={4} />
         </Section>
 
         <CareTeam />
 
-        <button onClick={handleReset} className="mt-6 min-h-12 w-full text-xs text-cocoa underline">
+        <button onClick={handleReset} className="mt-6 min-h-12 w-full text-xs underline">
           Reset demo data
         </button>
       </main>

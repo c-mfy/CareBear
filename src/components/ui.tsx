@@ -1,11 +1,28 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { cx } from '../lib/cx'
 
-export function Section({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
+/**
+ * Titled block (Figma: Poppins Bold 18 title, ~30px from title top to the card).
+ * titleExtra sits right after the title (e.g. "6 of 12 complete"); right sits at the far right.
+ */
+export function Section({
+  title,
+  children,
+  right,
+  titleExtra,
+}: {
+  title: string
+  children: ReactNode
+  right?: ReactNode
+  titleExtra?: ReactNode
+}) {
   return (
-    <section className="mt-5">
-      <div className="mb-2 flex items-end justify-between px-0.5">
-        <h2 className="font-display text-base font-bold">{title}</h2>
+    <section className="mt-4">
+      <div className="mb-1 flex items-center justify-between gap-2 px-px">
+        <div className="flex items-center gap-2.5">
+          <h2 className="font-display text-lg font-bold">{title}</h2>
+          {titleExtra}
+        </div>
         {right}
       </div>
       {children}
@@ -14,7 +31,7 @@ export function Section({ title, children, right }: { title: string; children: R
 }
 
 export function Card({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx('rounded-[20px] bg-white p-4', className)}>{children}</div>
+  return <div className={cx('rounded-[22px] bg-white p-4', className)}>{children}</div>
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'ghost' }
@@ -79,6 +96,17 @@ export function BottomBar({ children, className }: { children: ReactNode; classN
           className,
         )}
       >
+        {children}
+      </div>
+    </div>
+  )
+}
+
+/** Figma's centered brown pill pinned to the bottom (home screen). */
+export function PillBar({ children }: { children: ReactNode }) {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 mx-auto max-w-md px-[min(59px,10vw)] pb-[max(24px,calc(env(safe-area-inset-bottom)+8px))]">
+      <div className="pointer-events-auto flex min-h-[66px] items-center justify-center rounded-[40px] bg-cocoa px-4 text-center font-display text-lg font-bold whitespace-nowrap text-white shadow-lg">
         {children}
       </div>
     </div>

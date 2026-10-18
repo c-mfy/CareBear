@@ -9,8 +9,8 @@ import type { AppState, Caregiver, FieldValue, Handoff, LogEntry } from '../type
 import { DOOR_TAG_ID, devices } from './patient'
 
 export const seedCaregivers: Caregiver[] = [
-  { id: 'mom', name: 'Mom', color: '#f392ba', role: 'family' },
-  { id: 'nurse-alex', name: 'Nurse Alex', color: '#1bb3b0', role: 'staff' },
+  { id: 'mom', name: 'Mom', color: '#f392b9', role: 'family' },
+  { id: 'nurse-alex', name: 'Nurse Alex', color: '#6fbec1', role: 'staff' },
   { id: 'dad', name: 'Dad', color: '#755339', role: 'family' },
 ]
 

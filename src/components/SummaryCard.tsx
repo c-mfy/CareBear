@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react'
 import { getRecentSummary } from '../lib/ai-client'
-import { cx } from '../lib/cx'
-import { formatDateTime } from '../lib/format'
 import { buildRecentContext, mockRecentSummary, RECENT_HOURS, recentKey } from '../lib/recent'
 import { useStore } from '../lib/store'
 import { useNow } from '../lib/useNow'
-import type { Caregiver } from '../types'
-import { Card, Dot, FlagMark, Tag } from './ui'
+import { Card } from './ui'
 
 export function BulletList({ bullets }: { bullets: string[] }) {
   return (
@@ -58,7 +55,10 @@ export function SummaryCard() {
   const key = recentKey(ctx)
   const [ai, setAi] = useState<{ key: string; bullets: string[] } | null>(() => {
     const bullets = cachedSummary(key)
-    return bullets ? { key, bullets } : null
+    if (bullets) {
+      return { key, bullets }
+    }
+    return null
   })
 
   useEffect(() => {
@@ -83,35 +83,35 @@ export function SummaryCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
-  const fromAi = ai?.key === key
-  const bullets = fromAi ? ai.bullets : mockRecentSummary(state, ctx)
-  const needsAttention = ctx.overdue.length > 0 || ctx.handoffs.some((h) => h.flagged)
-  const people = ctx.caregiverIds
-    .map((id) => state.caregivers.find((c) => c.id === id))
-    .filter((c): c is Caregiver => !!c)
+  let bullets = mockRecentSummary(state, ctx)
+  if (ai?.key === key) {
+    bullets = ai.bullets
+  }
 
   return (
-    <Card className={cx('border-l-[5px]', needsAttention ? 'border-rose' : 'border-teal')}>
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-1.5 text-sm font-bold">
-          {needsAttention && <FlagMark />}
-          Last {RECENT_HOURS} hours
-        </h2>
-        {fromAi ? (
-          <Tag className="bg-mist text-teal">✦ AI summary</Tag>
-        ) : (
-          <Tag className="bg-lilac text-cocoa">Auto summary</Tag>
-        )}
-      </div>
-      <p className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-cocoa">
-        <span>{formatDateTime(ctx.since.toISOString())} – now</span>
-        {people.map((c) => (
-          <span key={c.id} className="flex items-center gap-1">
-            <Dot color={c.color} /> {c.name}
-          </span>
+    <Card className="px-[17px] pt-[17px] pb-[18px]">
+      <h3 className="mb-3 pl-[5px] text-base font-bold">Last {RECENT_HOURS} hours</h3>
+      <ul className="list-disc space-y-0.5 pl-[18px] text-xs leading-snug">
+        {bullets.map((b, i) => (
+          <li key={i}>
+            <SummaryLine text={b} />
+          </li>
         ))}
-      </p>
-      <BulletList bullets={bullets} />
+      </ul>
     </Card>
   )
+}
+
+/** Bold a leading "Next up:" label, as in the Figma. */
+function SummaryLine({ text }: { text: string }) {
+  const label = 'Next up:'
+  if (text.startsWith(label)) {
+    return (
+      <>
+        <b>{label}</b>
+        {text.slice(label.length)}
+      </>
+    )
+  }
+  return <>{text}</>
 }

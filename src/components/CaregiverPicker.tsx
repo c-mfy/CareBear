@@ -25,7 +25,7 @@ export function CaregiverPicker({ onPick }: { onPick: (c: Caregiver) => void }) 
         <button
           key={c.id}
           onClick={() => onPick(c)}
-          className="flex min-h-14 w-full items-center gap-3 rounded-[18px] bg-white px-4 text-left font-semibold active:scale-[0.98]"
+          className="flex min-h-14 w-full items-center gap-3 rounded-[18px] bg-blossom px-4 text-left font-bold active:scale-[0.98]"
         >
           <Dot color={c.color} />
           <span className="flex-1">{c.name}</span>
@@ -37,13 +37,13 @@ export function CaregiverPicker({ onPick }: { onPick: (c: Caregiver) => void }) 
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Add a caregiver"
-          className="min-h-12 flex-1 rounded-full border-[1.5px] border-aqua bg-white px-4 outline-none focus:border-teal"
+          className="min-h-12 min-w-0 flex-1 rounded-full border-[1.5px] border-aqua bg-white px-4 outline-none focus:border-teal"
         />
         <Button className="w-auto px-6" onClick={handleAdd} disabled={!name.trim()}>
           Add
         </Button>
       </div>
-      <div className="flex gap-1 rounded-full bg-white p-1 text-xs font-semibold" role="radiogroup" aria-label="Role">
+      <div className="flex gap-1 rounded-full bg-blossom p-1 text-xs font-bold" role="radiogroup" aria-label="Role">
         {(
           [
             ['family', 'Family'],
@@ -55,7 +55,7 @@ export function CaregiverPicker({ onPick }: { onPick: (c: Caregiver) => void }) 
             role="radio"
             aria-checked={role === value}
             onClick={() => setRole(value)}
-            className={cx('min-h-9 flex-1 rounded-full', role === value ? 'bg-teal text-white' : 'text-cocoa')}
+            className={cx('min-h-9 flex-1 rounded-full', role === value && 'bg-sea text-white', role !== value && 'text-cocoa')}
           >
             {label}
           </button>
