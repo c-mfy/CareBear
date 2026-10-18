@@ -45,10 +45,15 @@ export function CheckInPage() {
   // (Checked once on arrival: right after picking a name, onShift is set before we navigate away.)
   const [tappedToCheckOut] = useState(() => !!onShift && tagValid)
 
+  // Set the moment someone picks a name. Checking in makes onShift true one render before the
+  // page actually changes, which would briefly flash the "still on shift" screen; this skips it.
+  const [leaving, setLeaving] = useState(false)
+
   function handlePick(c: Caregiver) {
     if (!tagValid) {
       return
     }
+    setLeaving(true)
     checkIn(c.id, DOOR_TAG_ID)
     // replace: keep the tag id out of the back history
     navigate(next, { replace: true })
@@ -56,6 +61,10 @@ export function CheckInPage() {
 
   if (tappedToCheckOut) {
     return <Navigate to={`/handoff?tag=${DOOR_TAG_ID}`} replace />
+  }
+
+  if (leaving) {
+    return null
   }
 
   if (onShift) {
