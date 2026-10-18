@@ -92,7 +92,7 @@ export function HomePage() {
         {overdue.length === 0 && (
           <div role="status" className="-mt-[35px] rounded-[22px] bg-sea px-[21px] pt-[13px] pb-[14px] text-white">
             <p className="text-xl leading-tight font-black uppercase">No overdue tasks</p>
-            <p className="mt-1.5 pl-3 text-xs font-bold">Everything due so far is done.</p>
+            <p className="mt-1.5 pl-3 text-xs font-bold">You're doing great. Kuma is proud of you!</p>
           </div>
         )}
 
