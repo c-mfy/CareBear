@@ -28,7 +28,7 @@ const LEAK_NOTE = 'Small leak at extension set, reconnected.'
 const COUGH_NOTE = 'Coughed a lot after saline, settled after 10 min.'
 
 /** Bump whenever the demo data changes: browsers holding an older version reload the new demo data. */
-export const SEED_VERSION = 3
+export const SEED_VERSION = 4
 
 // Shifts a caregiver flagged by hand because something was actually wrong (not just overdue).
 // Both land on the same "sick day": vomiting overnight, then a worse cough and low fever that evening.
@@ -95,6 +95,7 @@ export function makeSeed(now: Date = new Date()): AppState {
     const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() - k)
     // Scripted events, by days back (0 = today), so they always land in past days
     const missVestEvening = k === 1
+    const missTrikaftaThisMorning = k === 0 // left undone today, so it shows as overdue in the demo
     const lateTrikafta = k === 2 // evening caregiver misses it, bedtime caregiver gives it late
     const sickDay = k === 3 // vomiting overnight (morning flag), worse cough + fever (evening flag)
     const pumpAlarm = k === 1 || sickDay
@@ -136,6 +137,9 @@ export function makeSeed(now: Date = new Date()): AppState {
           }
           const key = `${device.id}:${session.id}`
           if (key === 'vest:evening' && missVestEvening && block.id === 'evening') {
+            continue
+          }
+          if (key === 'trikafta:morning' && missTrikaftaThisMorning) {
             continue
           }
           if (key === 'trikafta:evening' && lateTrikafta) {
