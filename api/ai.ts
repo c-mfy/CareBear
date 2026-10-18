@@ -87,7 +87,8 @@ export async function POST(request: Request): Promise<Response> {
   if (!key) {
     return Response.json({ error: 'GEMINI_API_KEY not set' }, { status: 500 })
   }
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+  // trim: a pasted env value with a stray space, newline or quotes otherwise turns into a 404 "model not found"
+  const model = (process.env.GEMINI_MODEL || '').trim().replace(/^["']|["']$/g, '') || 'gemini-2.5-flash'
 
   let body: Body
   try {
@@ -108,7 +109,16 @@ export async function POST(request: Request): Promise<Response> {
     }),
   })
   if (!res.ok) {
-    return Response.json({ error: `Gemini error ${res.status}` }, { status: 502 })
+    // Pass Google's reason along (e.g. which quota was hit, or which model name wasn't found)
+    let reason = ''
+    try {
+      const err = await res.json()
+      reason = String(err?.error?.message || '').slice(0, 300)
+    } catch {
+      // no JSON body
+    }
+    console.error(`Gemini error ${res.status} (model ${model}):`, reason)
+    return Response.json({ error: `Gemini error ${res.status} (model "${model}"): ${reason}` }, { status: 502 })
   }
 
   const data = await res.json()

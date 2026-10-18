@@ -88,44 +88,79 @@ export function recentForAi(state: AppState, ctx: RecentContext) {
   }
 }
 
-/** Local summary: what needs attention first, then notes, who did what, and what's next. At most 5 bullets. */
+/** One entry, compact: "Vest 30 min", "Feeding pump 900 mL", "Trikafta NOT done: Dose given". */
+function shortLog(log: LogEntry): string {
+  const device = getDevice(log.deviceId)
+  const session = device?.sessions.find((s) => s.id === log.sessionId)
+  if (!device || !session) {
+    return 'Unknown entry'
+  }
+  const numbers: string[] = []
+  const missed: string[] = []
+  for (const field of session.fields) {
+    const value = log.values[field.id]
+    if (field.type === 'number' && typeof value === 'number') {
+      numbers.push(`${value}${field.unit ? ` ${field.unit}` : ''}`)
+    } else if (field.type === 'check' && value !== true) {
+      missed.push(field.label)
+    }
+  }
+  let text = device.name
+  if (numbers.length > 0) {
+    text += ` ${numbers.join(', ')}`
+  }
+  if (missed.length > 0) {
+    text += ` (NOT done: ${missed.join(', ')})`
+  }
+  return text
+}
+
+/**
+ * Local summary, used until (or instead of) the AI one: what needs attention, one line per visit saying
+ * what was done, caregiver notes, and what's due next.
+ */
 export function mockRecentSummary(state: AppState, ctx: RecentContext): string[] {
   const bullets: string[] = []
   if (ctx.overdue.length > 0) {
-    bullets.push(`Needs attention: ${ctx.overdue.slice(0, 2).join('; ')}${ctx.overdue.length > 2 ? '; and more' : ''}.`)
+    bullets.push(`Needs attention: ${ctx.overdue.join('; ')}.`)
   }
   for (const h of ctx.handoffs) {
     if (h.flagged && !h.flagReasons?.length) {
-      bullets.push(`${nameOf(state, h.caregiverId)} flagged their shift as abnormal.`)
+      bullets.push(`${nameOf(state, h.caregiverId)} flagged their visit as abnormal.`)
     }
     if (h.overallNotes.trim()) {
       bullets.push(`${nameOf(state, h.caregiverId)}'s handoff note: "${h.overallNotes.trim()}"`)
     }
   }
-  const noted = ctx.logs.filter((l) => logNotes(l) && logNotes(l).toLowerCase() !== 'no issues.').slice(-2)
+
+  // One line per visit: finished visits in the window, then whoever is on shift now
+  const visits = ctx.handoffs.map((h) => ({
+    who: nameOf(state, h.caregiverId),
+    when: `${formatTime(h.start)} – ${formatTime(h.end)}`,
+    logs: ctx.logs.filter((l) => h.logIds.includes(l.id)),
+  }))
+  if (state.currentShift) {
+    const shift = state.currentShift
+    visits.push({
+      who: nameOf(state, shift.caregiverId),
+      when: `since ${formatTime(shift.start)} (on shift)`,
+      logs: ctx.logs.filter((l) => l.caregiverId === shift.caregiverId && l.timestamp >= shift.start),
+    })
+  }
+  for (const v of visits) {
+    const done = v.logs.length > 0 ? v.logs.map(shortLog).join(' · ') : 'nothing logged'
+    bullets.push(`${v.who}, ${v.when}: ${done}.`)
+  }
+  if (visits.length === 0) {
+    bullets.push(`Nothing logged in the last ${RECENT_HOURS} hours.`)
+  }
+
+  const noted = ctx.logs.filter((l) => logNotes(l) && logNotes(l).toLowerCase() !== 'no issues.').slice(-3)
   for (const log of noted) {
     bullets.push(`${getDevice(log.deviceId)?.name}, ${formatTime(log.timestamp)} (${nameOf(state, log.caregiverId)}): "${logNotes(log)}"`)
   }
-  const shifts = ctx.handoffs.map(
-    (h) => `${nameOf(state, h.caregiverId)} ${formatTime(h.start)} – ${formatTime(h.end)}`,
-  )
-  if (state.currentShift) {
-    shifts.push(`${nameOf(state, state.currentShift.caregiverId)} since ${formatTime(state.currentShift.start)} (on shift)`)
-  }
-  if (shifts.length > 0) {
-    bullets.push(`Shifts: ${shifts.join('; ')}.`)
-  }
-  if (ctx.logs.length > 0) {
-    const counts = ctx.caregiverIds
-      .map((id) => [nameOf(state, id), ctx.logs.filter((l) => l.caregiverId === id).length] as const)
-      .filter(([, n]) => n > 0)
-      .map(([name, n]) => `${name} ${n}`)
-    bullets.push(`${ctx.logs.length} care entries logged (${counts.join(', ')}).`)
-  } else {
-    bullets.push(`Nothing logged in the last ${RECENT_HOURS} hours.`)
-  }
   if (ctx.upcoming.length > 0) {
-    bullets.push(`Next up: ${ctx.upcoming.slice(0, 2).join(', ')}.`)
+    bullets.push(`Next up: ${ctx.upcoming.join(', ')}.`)
   }
-  return bullets.slice(0, 5)
+  return bullets
 }
