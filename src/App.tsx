@@ -1,5 +1,6 @@
 import { useLayoutEffect } from 'react'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { WelcomeOverlay } from './components/WelcomeOverlay'
 import { StoreProvider } from './lib/store'
 import { CheckInPage } from './pages/CheckInPage'
 import { DoctorNotePage } from './pages/DoctorNotePage'
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/history" element={<HistoryPage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>
+        <WelcomeOverlay />
       </BrowserRouter>
     </StoreProvider>
   )

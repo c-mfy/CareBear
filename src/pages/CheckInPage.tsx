@@ -4,6 +4,7 @@ import { CaregiverPicker } from '../components/CaregiverPicker'
 import { Kuma } from '../components/Kuma'
 import { DOOR_TAG_ID } from '../data/patient'
 import { useStore } from '../lib/store'
+import { showWelcome } from '../lib/welcome'
 import type { Caregiver } from '../types'
 
 /**
@@ -55,6 +56,7 @@ export function CheckInPage() {
     }
     setLeaving(true)
     checkIn(c.id, DOOR_TAG_ID)
+    showWelcome(c.name) // Kuma's welcome scene plays over the next page
     // replace: keep the tag id out of the back history
     navigate(next, { replace: true })
   }

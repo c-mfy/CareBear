@@ -109,3 +109,70 @@ textarea::placeholder {
     animation: none !important;
   }
 }
+/* ---------- Welcome scene after check-in (WelcomeOverlay) ---------- */
+.welcome-in {
+  animation: welcome-fade-in 250ms ease-out both;
+}
+.welcome-out {
+  animation: welcome-fade-out 400ms ease-in forwards;
+}
+/* Kuma: pops in, jumps 3 times with a waving tilt, then keeps gently waving */
+.welcome-kuma {
+  transform-origin: 50% 100%;
+  animation:
+    welcome-pop 450ms cubic-bezier(0.3, 1.5, 0.6, 1),
+    welcome-jump 900ms ease-in-out 450ms 3,
+    welcome-wave 1s ease-in-out 3150ms infinite;
+}
+.welcome-shadow {
+  animation: welcome-shadow 900ms ease-in-out 450ms 3;
+}
+.welcome-text {
+  animation: welcome-rise 500ms ease-out 500ms both;
+}
+.welcome-hint {
+  animation: welcome-fade-in 500ms ease-out 1500ms both;
+}
+.welcome-sparkle {
+  animation: welcome-twinkle 1.2s ease-in-out infinite;
+}
+
+@keyframes welcome-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes welcome-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes welcome-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes welcome-jump {
+  0% { transform: translateY(0) scale(1.08, 0.9); }        /* crouch */
+  30% { transform: translateY(-64px) scale(0.96, 1.06) rotate(-7deg); }
+  50% { transform: translateY(-76px) rotate(7deg); }         /* top of the jump: wave */
+  70% { transform: translateY(-40px) rotate(-4deg); }
+  85% { transform: translateY(0) scale(1.06, 0.93); }        /* land */
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes welcome-wave {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+@keyframes welcome-shadow {
+  0%, 85%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.55); opacity: 0.5; }
+}
+@keyframes welcome-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes welcome-twinkle {
+  0%, 100% { transform: scale(0.6); opacity: 0.3; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-kuma, .welcome-shadow, .welcome-sparkle { animation: none; }
+}
