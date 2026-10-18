@@ -111,6 +111,16 @@ export class PdfWriter {
     this.y += 66
   }
 
+  /** A plain paragraph at body size. */
+  paragraph(text: string) {
+    const { doc } = this
+    doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(...BROWN)
+    const lines = doc.splitTextToSize(pdfText(text), CONTENT_W) as string[]
+    this.ensureSpace(lines.length * 13 + 4)
+    doc.text(lines, M, this.y)
+    this.y += lines.length * 13 + 6
+  }
+
   bullets(items: string[]) {
     const { doc } = this
     doc.setFont('helvetica', 'normal').setFontSize(10).setTextColor(...BROWN)

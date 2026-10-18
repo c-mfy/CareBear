@@ -3,9 +3,10 @@
 // narrative sections on top of them.
 
 import { DOOR_TAG_ID, devices, getDevice, patient } from '../data/patient'
-import type { AppState, Caregiver, NoteSection } from '../types'
+import type { AppState, Caregiver, DoctorSummary, NoteSection } from '../types'
 import { formatDate, formatDateAndTime, fromDateInput, logNotes } from './format'
 import { quarterlyDueDate, timeToday } from './sessions'
+import type { Trends } from './trends'
 
 export interface AdherenceRow {
   device: string
@@ -50,6 +51,8 @@ export interface DoctorReport {
   notes: NoteEntry[]
   handoffNotes: NoteEntry[]
   logsByCaregiver: { name: string; count: number }[]
+  /** Visits flagged abnormal: overdue reasons and/or the caregiver's handoff note */
+  flaggedVisits: { when: string; caregiver: string; reasons: string[]; note: string }[]
   /** Shifts in the period; verified = door tag tapped at check-in and check-out (EVV) */
   shifts: { caregiver: string; start: string; verified: boolean }[]
   gtube: { lastChange: string; due: string; replacedInPeriod: string[] }
@@ -168,6 +171,15 @@ export function buildDoctorReport(state: AppState, now: Date = new Date()): Doct
     notes,
     handoffNotes,
     logsByCaregiver: [...counts].map(([name, count]) => ({ name, count })),
+    flaggedVisits: state.handoffs
+      .filter((h) => h.flagged && new Date(h.end) >= since)
+      .sort((a, b) => a.start.localeCompare(b.start))
+      .map((h) => ({
+        when: formatDateAndTime(h.start),
+        caregiver: caregiverName(state.caregivers, h.caregiverId),
+        reasons: h.flagReasons || [],
+        note: h.overallNotes.trim(),
+      })),
     shifts: [
       ...state.handoffs
         .filter((h) => new Date(h.end) >= since)
@@ -205,17 +217,96 @@ export function adherenceTotals(report: DoctorReport): { done: number; expected:
   return { done, expected, pct }
 }
 
-/** Used when the AI call fails: same sections, written from the numbers directly. */
-export function mockDoctorNote(report: DoctorReport): NoteSection[] {
+function firstSentence(text: string): string {
+  const match = text.match(/^.*?[.!?](\s|$)/)
+  return (match ? match[0] : text).trim()
+}
+
+/** Average of the non-empty values, to one decimal. */
+function average(values: (number | null)[]): number | null {
+  const nums = values.filter((v): v is number => v !== null)
+  return nums.length ? Math.round((nums.reduce((a, b) => a + b, 0) / nums.length) * 10) / 10 : null
+}
+
+/**
+ * Used when the AI call fails: a short overview and the main trends, worked out from the numbers.
+ * Patterns, not a list of every event (the tables below the summary have the details).
+ */
+export function mockDoctorSummary(report: DoctorReport, trends: Trends): DoctorSummary {
   const totals = adherenceTotals(report)
-  const period = `${formatDate(report.since)} – ${formatDate(report.until)}`
+  const late = trends.adherence.late.reduce((a, b) => a + b, 0)
+  const missed = trends.adherence.missed.reduce((a, b) => a + b, 0)
 
-  const summary = [
-    `${patient.name}, ${patient.age}. ${patient.summary}`,
-    `Covers ${report.days} days (${period}): ${report.totalLogs} care entries logged by ${report.logsByCaregiver.length} caregiver(s).`,
-    `${totals.done} of ${totals.expected} scheduled treatments logged (${totals.pct}%).`,
-  ]
+  let overview =
+    `Over ${report.days} days, ${totals.pct}% of scheduled treatments were logged ` +
+    `(${totals.done} of ${totals.expected})`
+  overview += late + missed > 0 ? `, with ${late} given late and ${missed} missed.` : ', all on time.'
+  if (report.flaggedVisits.length > 0) {
+    overview += ` Caregivers flagged ${report.flaggedVisits.length} visits as abnormal.`
+  }
 
+  const items: string[] = []
+
+  // What caregivers reported (hand-flagged visits), in their words, shortened
+  const reported = report.flaggedVisits.filter((v) => v.note)
+  if (reported.length > 0) {
+    items.push(
+      `Reported by caregivers: ${reported.map((v) => `${v.when.split(',')[0]}: ${firstSentence(v.note)}`).join(' ')}`,
+    )
+  }
+
+  // Feeds: nights that fell short of the prescribed volume
+  const nights = trends.feed.infused
+    .map((ml, i) => ({ ml, prescribed: trends.feed.prescribed[i], day: trends.days[i] }))
+    .filter((n): n is { ml: number; prescribed: number; day: string } => n.ml !== null && n.prescribed !== null)
+  const short = nights.filter((n) => n.ml < n.prescribed)
+  if (short.length > 0) {
+    const lowest = short.reduce((a, b) => (b.ml < a.ml ? b : a))
+    items.push(
+      `Overnight feeds fell short of the prescribed ${lowest.prescribed} mL on ${short.length} of ${nights.length} nights ` +
+        `(lowest ${lowest.ml} mL on ${lowest.day}).`,
+    )
+  } else if (nights.length > 0) {
+    items.push(`Overnight feeds met the prescribed volume every night.`)
+  }
+
+  // Respiratory: how often coughing came up in caregiver notes
+  const allNotes = [...report.notes, ...report.handoffNotes]
+  const coughDays = new Set(allNotes.filter((n) => /cough|mucus/i.test(n.text)).map((n) => n.when.split(',')[0]))
+  if (coughDays.size > 0) {
+    items.push(`Coughing after airway treatments was noted on ${coughDays.size} of ${report.days} days.`)
+  }
+
+  // Trikafta timing
+  const lateDoses = (['morning', 'evening'] as const).flatMap((session) =>
+    trends.doseTiming[session]
+      .map((min, i) => ({ min, day: trends.days[i], session }))
+      .filter((d): d is { min: number; day: string; session: 'morning' | 'evening' } => d.min !== null && d.min >= 30),
+  )
+  if (lateDoses.length > 0) {
+    items.push(
+      `Trikafta was on schedule except ${lateDoses.length} late ${lateDoses.length === 1 ? 'dose' : 'doses'} ` +
+        `(${lateDoses.map((d) => `${d.session} on ${d.day}, ${d.min} min late`).join('; ')}).`,
+    )
+  }
+
+  // Vest
+  const vest = average([...trends.vest.morning, ...trends.vest.evening])
+  const vestMissed = report.adherence.filter((r) => r.device === 'Vest').reduce((a, r) => a + (r.expected - r.done), 0)
+  if (vest !== null) {
+    items.push(
+      `Vest sessions averaged ${vest} min` + (vestMissed > 0 ? `, with ${vestMissed} session${vestMissed === 1 ? '' : 's'} missed.` : '.'),
+    )
+  }
+
+  return { overview, trends: items.slice(0, 5) }
+}
+
+/**
+ * The full detail under the summary, computed straight from the logs (never AI-written), so it's always
+ * complete and exact.
+ */
+export function detailSections(report: DoctorReport): NoteSection[] {
   const adherence = report.adherence
     .filter((r) => r.done < r.expected)
     .map((r) => `${r.device} ${r.session.toLowerCase()}: ${r.done} of ${r.expected} logged.`)
@@ -223,7 +314,14 @@ export function mockDoctorNote(report: DoctorReport): NoteSection[] {
     adherence.push('Every scheduled treatment in this period was logged.')
   }
 
-  const observations = [...report.notes, ...report.handoffNotes].map(
+  const flagged = report.flaggedVisits.map((v) => {
+    const why = [...v.reasons, ...(v.note ? [`"${v.note}"`] : [])].join(' ')
+    return `${v.when}, ${v.caregiver}: ${why || 'flagged as abnormal.'}`
+  })
+
+  // handoff notes on flagged visits are already listed above
+  const flaggedNotes = report.flaggedVisits.map((v) => v.note)
+  const observations = [...report.notes, ...report.handoffNotes.filter((n) => !flaggedNotes.includes(n.text))].map(
     (n) => `${n.when}, ${n.device} (${n.caregiver}): "${n.text}"`,
   )
   for (const m of report.missed) {
@@ -239,35 +337,52 @@ export function mockDoctorNote(report: DoctorReport): NoteSection[] {
   ]
 
   return [
-    { title: 'Summary', bullets: summary },
     { title: 'Treatment adherence', bullets: adherence },
+    ...(flagged.length > 0 ? [{ title: 'Flagged visits', bullets: flagged }] : []),
     { title: 'Symptoms & observations', bullets: observations },
     { title: 'Measurements & equipment', bullets: equipment },
   ]
 }
 
-/** Compact, already-computed facts sent to the AI (no raw ids). */
-export function reportForAi(report: DoctorReport) {
+/** Compact, already-computed facts sent to the AI (no raw ids), including the day-by-day series. */
+export function reportForAi(report: DoctorReport, trends: Trends) {
   return {
     patient: `${patient.name}, ${patient.age}. ${patient.summary}`,
     period: `${formatDate(report.since)} – ${formatDate(report.until)} (${report.days} days)`,
     totalLogs: report.totalLogs,
     adherence: report.adherence,
     measurements: report.measurements,
-    skippedSteps: report.missed,
+    daily: trends.days.map((day, i) => ({
+      day,
+      treatmentsOnTime: trends.adherence.onTime[i],
+      treatmentsLate: trends.adherence.late[i],
+      treatmentsMissed: trends.adherence.missed[i],
+      feedInfusedMl: trends.feed.infused[i],
+      feedPrescribedMl: trends.feed.prescribed[i],
+      vestMorningMin: trends.vest.morning[i],
+      vestEveningMin: trends.vest.evening[i],
+      trikaftaMorningMinAfterScheduled: trends.doseTiming.morning[i],
+      trikaftaEveningMinAfterScheduled: trends.doseTiming.evening[i],
+    })),
+    flaggedVisits: report.flaggedVisits,
     caregiverNotes: [...report.notes, ...report.handoffNotes],
     gtube: report.gtube,
   }
 }
 
 /** Plain-text version for copying into a portal or email. */
-export function noteAsText(report: DoctorReport, sections: NoteSection[]): string {
+export function noteAsText(report: DoctorReport, summary: DoctorSummary): string {
   const lines = [
     `Care report for ${patient.name} — ${formatDate(report.since)} to ${formatDate(report.until)}`,
     '',
+    summary.overview,
+    '',
+    'KEY TRENDS',
+    ...summary.trends.map((t) => `- ${t}`),
+    '',
   ]
-  for (const s of sections) {
-    lines.push(s.title.toUpperCase(), ...s.bullets.map((b) => `- ${b}`), '')
+  for (const section of detailSections(report)) {
+    lines.push(section.title.toUpperCase(), ...section.bullets.map((b) => `- ${b}`), '')
   }
   lines.push('TREATMENT LOG')
   for (const r of report.adherence) {

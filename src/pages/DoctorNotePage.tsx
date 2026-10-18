@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Header } from '../components/Header'
 import { BulletList } from '../components/SummaryCard'
 import { TrendCharts } from '../components/TrendCharts'
@@ -6,46 +6,66 @@ import { Button, Card, Page, Section, Tag } from '../components/ui'
 import { patient } from '../data/patient'
 import { getDoctorNote } from '../lib/ai-client'
 import { chartSpecs, renderChartImages } from '../lib/charts'
-import { adherenceTotals, buildDoctorReport, noteAsText } from '../lib/doctor'
-import { formatDate, toDateInput } from '../lib/format'
+import { adherenceTotals, buildDoctorReport, detailSections, mockDoctorSummary, noteAsText } from '../lib/doctor'
+import { toDateInput } from '../lib/format'
+import { loadCached, saveCached } from '../lib/storage'
 import { useStore } from '../lib/store'
 import { buildTrends } from '../lib/trends'
-import type { NoteSection } from '../types'
+import type { DoctorSummary } from '../types'
 
-/** Doctor's note: a detailed report of everything logged since the last doctor's visit. */
+/**
+ * Doctor's note: a brief summary of trends since the last doctor's visit at the top (AI when available),
+ * then the charts and tables it's based on.
+ */
 export function DoctorNotePage() {
   const { state, setLastDoctorVisit } = useStore()
-  const [sections, setSections] = useState<NoteSection[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const [confirmingVisit, setConfirmingVisit] = useState(false)
   const [makingPdf, setMakingPdf] = useState(false)
 
   const report = buildDoctorReport(state)
-  const specs = chartSpecs(buildTrends(state))
+  const trends = buildTrends(state)
+  const specs = chartSpecs(trends)
   const totals = adherenceTotals(report)
   const today = toDateInput(new Date())
 
-  async function handleGenerate() {
+  // Changes only when the data behind the summary does, so the AI isn't re-asked on every visit
+  const key = JSON.stringify([state.lastDoctorVisit, state.logs.length, state.handoffs.map((h) => [h.id, h.flagged])])
+  const [ai, setAi] = useState<{ key: string; summary: DoctorSummary } | null>(() => {
+    const cached = loadCached<DoctorSummary>('doctor-summary', key)
+    return cached ? { key, summary: cached } : null
+  })
+  const fromAi = ai?.key === key
+  const summary = fromAi ? ai.summary : mockDoctorSummary(report, trends)
+
+  async function askAi() {
     setLoading(true)
-    setSections(await getDoctorNote(report))
+    const result = await getDoctorNote(report, trends)
+    if (result.source === 'ai') {
+      saveCached('doctor-summary', key, result.summary)
+      setAi({ key, summary: result.summary })
+    }
     setLoading(false)
   }
+
+  useEffect(() => {
+    if (!fromAi && report.totalLogs > 0) {
+      askAi()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key])
 
   function handleSinceChange(value: string) {
     if (!value || value > today) {
       return
     }
-    setLastDoctorVisit(value)
-    setSections(null) // period changed: note must be regenerated
+    setLastDoctorVisit(value) // the key changes, so the summary is rewritten for the new period
   }
 
   async function handleCopy() {
-    if (!sections) {
-      return
-    }
     try {
-      await navigator.clipboard.writeText(noteAsText(report, sections))
+      await navigator.clipboard.writeText(noteAsText(report, summary))
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
@@ -54,9 +74,6 @@ export function DoctorNotePage() {
   }
 
   async function handlePdf() {
-    if (!sections) {
-      return
-    }
     setMakingPdf(true)
     try {
       // loaded on demand: jsPDF is large and only this button needs it
@@ -67,7 +84,7 @@ export function DoctorNotePage() {
       } catch {
         // charts are a bonus: still make the PDF without them
       }
-      buildDoctorPdf(report, sections, charts).save(doctorPdfFilename())
+      buildDoctorPdf(report, summary, charts).save(doctorPdfFilename())
     } finally {
       setMakingPdf(false)
     }
@@ -75,20 +92,14 @@ export function DoctorNotePage() {
 
   function handleVisitDone() {
     setLastDoctorVisit(today)
-    setSections(null)
     setConfirmingVisit(false)
-  }
-
-  let generateLabel = "Generate doctor's note"
-  if (loading) {
-    generateLabel = 'Writing note…'
   }
 
   return (
     <Page>
       <Header title="Doctor's note" back />
       <main className="px-4 pt-2">
-        {/* Period */}
+        {/* Period + summary */}
         <Card>
           <h1 className="text-lg font-bold">Care report for {patient.name}</h1>
           <label className="mt-2 flex items-center justify-between gap-3 text-sm">
@@ -98,57 +109,74 @@ export function DoctorNotePage() {
               value={state.lastDoctorVisit}
               max={today}
               onChange={(e) => handleSinceChange(e.target.value)}
-              className="rounded-xl bg-lilac px-3 py-2 text-sm font-semibold outline-none print:hidden"
+              className="rounded-xl bg-lilac px-3 py-2 text-sm font-semibold outline-none"
             />
-            <span className="hidden font-semibold print:inline">{formatDate(report.since)}</span>
           </label>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
             <Stat value={String(report.days)} label="days" />
             <Stat value={String(report.totalLogs)} label="entries" />
             <Stat value={`${totals.pct}%`} label="on schedule" />
           </div>
+
+          {report.totalLogs === 0 && (
+            <p className="mt-4 text-sm text-cocoa">Nothing has been logged since this date.</p>
+          )}
+          {report.totalLogs > 0 && (
+            <div className="mt-4 border-t border-lilac pt-3">
+              <div className="mb-1.5 flex items-center justify-between gap-2">
+                <h2 className="text-sm font-bold">Summary</h2>
+                {fromAi ? (
+                  <Tag className="bg-mist text-teal">✦ AI summary</Tag>
+                ) : (
+                  <Tag className="bg-lilac text-cocoa">{loading ? 'Writing AI summary…' : 'Auto summary'}</Tag>
+                )}
+              </div>
+              <p className="text-[13px] leading-snug">{summary.overview}</p>
+              {summary.trends.length > 0 && (
+                <>
+                  <h3 className="mt-3 mb-1.5 text-xs font-bold tracking-wider text-teal uppercase">Key trends</h3>
+                  <BulletList bullets={summary.trends} />
+                </>
+              )}
+            </div>
+          )}
         </Card>
 
-        {/* AI write-up */}
-        <div className="mt-4 space-y-3">
-          {!sections && (
-            <Button onClick={handleGenerate} disabled={loading || report.totalLogs === 0}>
-              {generateLabel}
-            </Button>
-          )}
-          {!sections && report.totalLogs === 0 && (
-            <p className="text-center text-xs text-cocoa">Nothing has been logged since this date.</p>
-          )}
-          {sections && (
-            <>
-              <Card className="space-y-4 border-l-[5px] border-teal">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-bold">
-                    {formatDate(report.since)} – {formatDate(report.until)}
-                  </h2>
-                  <Tag className="bg-mist text-teal print:hidden">✦ AI written</Tag>
-                </div>
-                {sections.map((s) => (
-                  <div key={s.title}>
-                    <h3 className="mb-1.5 text-xs font-bold tracking-wider text-teal uppercase">{s.title}</h3>
-                    <BulletList bullets={s.bullets} />
-                  </div>
-                ))}
-              </Card>
-              <div className="flex gap-3 print:hidden">
-                <Button variant="ghost" onClick={handleCopy}>
-                  {copied ? 'Copied ✓' : 'Copy text'}
-                </Button>
-                <Button variant="ghost" onClick={handlePdf} disabled={makingPdf}>
-                  {makingPdf ? 'Making PDF…' : 'Download PDF'}
-                </Button>
+        {/* Full detail under the summary, computed from the logs */}
+        {report.totalLogs > 0 && (
+          <Card className="mt-3 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-bold">Details</h2>
+              <Tag className="bg-lilac text-cocoa">From the logs</Tag>
+            </div>
+            {detailSections(report).map((s) => (
+              <div key={s.title}>
+                <h3 className="mb-1.5 text-xs font-bold tracking-wider text-teal uppercase">{s.title}</h3>
+                <BulletList bullets={s.bullets} />
               </div>
-              <Button variant="ghost" onClick={handleGenerate} disabled={loading} className="print:hidden">
-                {loading ? 'Writing note…' : '↻ Regenerate'}
+            ))}
+          </Card>
+        )}
+
+        {report.totalLogs > 0 && (
+          <div className="mt-3 space-y-3">
+            <div className="flex gap-3">
+              <Button variant="ghost" onClick={handleCopy}>
+                {copied ? 'Copied ✓' : 'Copy text'}
               </Button>
-            </>
-          )}
-        </div>
+              <Button onClick={handlePdf} disabled={makingPdf}>
+                {makingPdf ? 'Making PDF…' : 'Download PDF'}
+              </Button>
+            </div>
+            <button
+              onClick={askAi}
+              disabled={loading}
+              className="min-h-10 w-full text-xs font-semibold text-teal disabled:opacity-50"
+            >
+              {loading ? 'Writing summary…' : '↻ Regenerate summary'}
+            </button>
+          </div>
+        )}
 
         {/* The numbers the note is based on, always shown */}
         <Section title="Trends">

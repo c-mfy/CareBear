@@ -78,3 +78,27 @@ export function clearHandoffDraft(): void {
     // nothing to clear
   }
 }
+
+// Small cache for AI results, tied to the data they were written from (key), so a reload doesn't re-ask.
+export function loadCached<T>(name: string, key: string): T | null {
+  try {
+    const raw = localStorage.getItem(`care-cache-${name}`)
+    if (raw) {
+      const cached = JSON.parse(raw) as { key: string; value: T }
+      if (cached.key === key) {
+        return cached.value
+      }
+    }
+  } catch {
+    // no cache
+  }
+  return null
+}
+
+export function saveCached<T>(name: string, key: string, value: T): void {
+  try {
+    localStorage.setItem(`care-cache-${name}`, JSON.stringify({ key, value }))
+  } catch {
+    // storage blocked: just re-ask next time
+  }
+}

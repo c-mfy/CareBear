@@ -3,9 +3,10 @@
 // to the mock functions below so the demo never breaks.
 
 import { getDevice } from '../data/patient'
-import type { AppState, Device, FieldValue, LogEntry, NoteSection, Session, Suggestion } from '../types'
-import { mockDoctorNote, reportForAi, type DoctorReport } from './doctor'
+import type { AppState, Device, DoctorSummary, FieldValue, LogEntry, Session, Suggestion } from '../types'
+import { mockDoctorSummary, reportForAi, type DoctorReport } from './doctor'
 import { mockRecentSummary, recentForAi, type RecentContext } from './recent'
+import type { Trends } from './trends'
 import { describeLog, formatTime, logNotes } from './format'
 
 const TIMEOUT_MS = 8000
@@ -143,23 +144,24 @@ export async function getShiftSummary(
 
 const DOCTOR_TIMEOUT_MS = 20000 // a longer write-up than the other tasks
 
-export async function getDoctorNote(report: DoctorReport): Promise<NoteSection[]> {
+/** Doctor's note summary: AI if available, otherwise the local version. `source` says which. */
+export async function getDoctorNote(
+  report: DoctorReport,
+  trends: Trends,
+): Promise<{ summary: DoctorSummary; source: 'ai' | 'auto' }> {
   try {
-    const data = await callAi<{ sections?: { title?: unknown; bullets?: unknown[] }[] }>(
-      { task: 'doctor', report: reportForAi(report) },
+    const data = await callAi<{ overview?: unknown; trends?: unknown[] }>(
+      { task: 'doctor', report: reportForAi(report, trends) },
       DOCTOR_TIMEOUT_MS,
     )
-    const sections = (data.sections || [])
-      .filter((section) => typeof section.title === 'string' && Array.isArray(section.bullets))
-      .map((section) => ({
-        title: section.title as string,
-        bullets: (section.bullets || []).filter((bullet): bullet is string => typeof bullet === 'string'),
-      }))
-      .filter((section) => section.bullets.length > 0)
-    return sections.length > 0 ? sections : mockDoctorNote(report)
+    const items = (data.trends || []).filter((t): t is string => typeof t === 'string')
+    if (typeof data.overview === 'string' && data.overview.trim()) {
+      return { summary: { overview: data.overview.trim(), trends: items.slice(0, 5) }, source: 'ai' }
+    }
   } catch {
-    return mockDoctorNote(report)
+    // fall through to the local summary
   }
+  return { summary: mockDoctorSummary(report, trends), source: 'auto' }
 }
 
 /** The last-12-hours summary: AI if available, otherwise the local version. `source` says which. */

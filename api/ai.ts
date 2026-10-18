@@ -51,13 +51,13 @@ function buildPrompt(body: Body): string {
   }
   if (body.task === 'doctor') {
     return [
-      `You write a care report for the pediatric doctor of a medically complex child, covering home care since the last visit.`,
-      `Home care data (already computed from caregiver logs): ${JSON.stringify(body.report)}.`,
-      `Write these sections, in this order: "Summary", "Treatment adherence", "Symptoms & observations", "Measurements & equipment", "Questions for the doctor".`,
-      `Each section has 2 to 6 short, clinical, factual bullets. Lead with anything missed, abnormal, or recurring. Include dates and counts.`,
-      `"Questions for the doctor" suggests questions the family could ask, based only on the data.`,
-      `Do not invent symptoms, doses, or numbers that are not in the data. Do not diagnose.`,
-      `Respond ONLY with JSON: {"sections":[{"title":"...","bullets":["..."]}]}`,
+      `You write the summary at the top of a home care report for the pediatric doctor of a medically complex child, covering home care since the last visit.`,
+      `Home care data (already computed from caregiver logs, including a day-by-day series): ${JSON.stringify(body.report)}.`,
+      `Write a brief, readable summary a busy doctor can take in at a glance. Detailed tables and charts follow it, so do NOT list every event.`,
+      `"overview": 2 to 3 plain sentences on how home care went overall in this period.`,
+      `"trends": 3 to 5 short bullets on patterns across the days: what is consistent, what is getting better or worse, what recurs (for example the same dose being late, feeds falling short on certain nights, symptoms clustering on the same days). Lead with anything clinically concerning. Mention dates or counts only when they make the pattern clear.`,
+      `Do not invent symptoms, doses, or numbers that are not in the data. Do not diagnose or recommend treatment.`,
+      `Respond ONLY with JSON: {"overview":"...","trends":["..."]}`,
     ].join('\n')
   }
   if (body.task === 'suggest') {

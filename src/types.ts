@@ -95,9 +95,16 @@ export interface AppState {
   lastDoctorVisit: string
 }
 
+/** A titled list of bullets (the doctor's note detail sections) */
 export interface NoteSection {
   title: string
   bullets: string[]
+}
+
+/** Doctor's note summary: a short overview plus the main trends over the period */
+export interface DoctorSummary {
+  overview: string
+  trends: string[]
 }
 
 export interface Suggestion {

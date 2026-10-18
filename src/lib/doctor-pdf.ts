@@ -3,12 +3,12 @@
 
 import type { CellHookData } from 'jspdf-autotable'
 import { patient } from '../data/patient'
-import type { NoteSection } from '../types'
-import { adherenceTotals, type DoctorReport } from './doctor'
+import type { DoctorSummary } from '../types'
+import { adherenceTotals, detailSections, type DoctorReport } from './doctor'
 import { formatDate, toDateInput } from './format'
 import { ALERT, PdfWriter, type ChartImage } from './pdf-kit'
 
-export function buildDoctorPdf(report: DoctorReport, sections: NoteSection[], charts: ChartImage[] = []) {
+export function buildDoctorPdf(report: DoctorReport, summary: DoctorSummary, charts: ChartImage[] = []) {
   const pdf = new PdfWriter('Home Care Report', 'Prepared for the treating physician')
   const totals = adherenceTotals(report)
   const period = `${formatDate(report.since)} - ${formatDate(report.until)}`
@@ -43,8 +43,16 @@ export function buildDoctorPdf(report: DoctorReport, sections: NoteSection[], ch
     totals.pct < 90 ? [0] : [],
   )
 
-  // ---------- Narrative sections ----------
-  for (const section of sections) {
+  // ---------- Summary ----------
+  pdf.heading('Summary')
+  pdf.paragraph(summary.overview)
+  if (summary.trends.length > 0) {
+    pdf.heading('Key trends')
+    pdf.bullets(summary.trends)
+  }
+
+  // ---------- Details (computed from the logs) ----------
+  for (const section of detailSections(report)) {
     pdf.heading(section.title)
     pdf.bullets(section.bullets)
   }
@@ -119,8 +127,8 @@ export function buildDoctorPdf(report: DoctorReport, sections: NoteSection[], ch
   // ---------- Sign-off ----------
   pdf.y += 6
   pdf.note(
-    'Compiled from caregiver-entered home care logs. Narrative sections are generated from the logged data and ' +
-      'should be reviewed alongside the appendices; they are not a diagnosis.',
+    'Compiled from caregiver-entered home care logs. The summary is generated from the logged data and should be ' +
+      'reviewed alongside the charts and appendices; it is not a diagnosis.',
   )
   pdf.signatures(['Reviewed by (physician)', 'Date'])
 
