@@ -116,16 +116,13 @@ textarea::placeholder {
 .welcome-out {
   animation: welcome-fade-out 400ms ease-in forwards;
 }
-/* Kuma: pops in, jumps 3 times with a waving tilt, then keeps gently waving */
+/* Waving Kuma: pops in, three happy hops with a tilt, then keeps waving side to side */
 .welcome-kuma {
-  transform-origin: 50% 100%;
+  transform-origin: 50% 90%;
   animation:
     welcome-pop 450ms cubic-bezier(0.3, 1.5, 0.6, 1),
-    welcome-jump 900ms ease-in-out 450ms 3,
-    welcome-wave 1s ease-in-out 3150ms infinite;
-}
-.welcome-shadow {
-  animation: welcome-shadow 900ms ease-in-out 450ms 3;
+    welcome-hop 800ms ease-in-out 450ms 3,
+    welcome-wave 1s ease-in-out 2850ms infinite;
 }
 .welcome-text {
   animation: welcome-rise 500ms ease-out 500ms both;
@@ -149,21 +146,16 @@ textarea::placeholder {
   0% { transform: scale(0.5); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
 }
-@keyframes welcome-jump {
-  0% { transform: translateY(0) scale(1.08, 0.9); }        /* crouch */
-  30% { transform: translateY(-64px) scale(0.96, 1.06) rotate(-7deg); }
-  50% { transform: translateY(-76px) rotate(7deg); }         /* top of the jump: wave */
-  70% { transform: translateY(-40px) rotate(-4deg); }
-  85% { transform: translateY(0) scale(1.06, 0.93); }        /* land */
+@keyframes welcome-hop {
+  0% { transform: translateY(0) scale(1.05, 0.94); }
+  40% { transform: translateY(-34px) rotate(-7deg); }
+  60% { transform: translateY(-34px) rotate(7deg); }
+  90% { transform: translateY(0) scale(1.04, 0.96); }
   100% { transform: translateY(0) scale(1); }
 }
 @keyframes welcome-wave {
   0%, 100% { transform: rotate(-5deg); }
   50% { transform: rotate(5deg); }
-}
-@keyframes welcome-shadow {
-  0%, 85%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(0.55); opacity: 0.5; }
 }
 @keyframes welcome-rise {
   from { opacity: 0; transform: translateY(12px); }
@@ -174,7 +166,7 @@ textarea::placeholder {
   50% { transform: scale(1.15); opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .welcome-kuma, .welcome-shadow, .welcome-sparkle { animation: none; }
+  .welcome-kuma, .welcome-sparkle { animation: none; }
 }
 
 /* ---------- Task-complete scene (CelebrateOverlay) ---------- */
