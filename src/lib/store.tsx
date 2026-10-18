@@ -19,6 +19,7 @@ interface Store {
   ) => void
   shiftLogs: () => LogEntry[]
   setLastDoctorVisit: (date: string) => void
+  removeCaregiver: (id: string) => void
   resetDemo: () => void
 }
 
@@ -110,6 +111,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, currentShift: null, handoffs: [handoff, ...s.handoffs] }))
   }
 
+  /** Off the care team, not deleted: their logs, handoffs and timesheet rows still need a name */
+  function removeCaregiver(id: string) {
+    if (state.currentShift?.caregiverId === id) {
+      return // check out first
+    }
+    setState((s) => ({
+      ...s,
+      caregivers: s.caregivers.map((c) => (c.id === id ? { ...c, removed: true } : c)),
+    }))
+  }
+
   function setLastDoctorVisit(date: string) {
     setState((s) => ({ ...s, lastDoctorVisit: date }))
   }
@@ -127,6 +139,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     completeHandoff,
     shiftLogs,
     setLastDoctorVisit,
+    removeCaregiver,
     resetDemo,
   }
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

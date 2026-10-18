@@ -117,7 +117,7 @@ export function CareCalendar() {
   return (
     <Card className="p-2">
       <div className="mb-2 flex flex-wrap gap-3 px-1 text-xs font-medium text-cocoa">
-        {state.caregivers.map((c) => (
+        {state.caregivers.filter((c) => !c.removed || state.logs.some((l) => l.caregiverId === c.id)).map((c) => (
           <span key={c.id} className="flex items-center gap-1">
             <Dot color={c.color} /> {c.name}
           </span>

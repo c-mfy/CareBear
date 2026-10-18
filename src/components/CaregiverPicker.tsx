@@ -21,7 +21,7 @@ export function CaregiverPicker({ onPick }: { onPick: (c: Caregiver) => void }) 
 
   return (
     <div className="space-y-2">
-      {state.caregivers.map((c) => (
+      {state.caregivers.filter((c) => !c.removed).map((c) => (
         <button
           key={c.id}
           onClick={() => onPick(c)}
