@@ -1,13 +1,19 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { formatDateTime } from '../lib/format'
 import { useStore } from '../lib/store'
 import { BulletList } from './SummaryCard'
 import { Dot, FlagMark } from './ui'
 
-/** Patient history: previous handoff summaries. Tap one to expand it. */
-export function HistoryList() {
+/**
+ * Patient history: previous handoff summaries, newest first. Tap one to expand it.
+ * limit: show only the newest few, with a link to the full history page.
+ */
+export function HistoryList({ limit }: { limit?: number }) {
   const { state } = useStore()
   const [openId, setOpenId] = useState<string | null>(null)
+  const handoffs = limit ? state.handoffs.slice(0, limit) : state.handoffs
+  const hidden = state.handoffs.length - handoffs.length
 
   function toggle(id: string) {
     if (openId === id) {
@@ -19,7 +25,7 @@ export function HistoryList() {
 
   return (
     <div className="space-y-2">
-      {state.handoffs.map((h) => {
+      {handoffs.map((h) => {
         const caregiver = state.caregivers.find((c) => c.id === h.caregiverId)
         let name = 'Unknown'
         let color = '#755339'
@@ -49,10 +55,12 @@ export function HistoryList() {
             </button>
             {openId === h.id && (
               <div className="border-t border-lilac px-4 py-3">
-                {h.flagReasons && h.flagReasons.length > 0 && (
+                {h.flagged && (
                   <div className="mb-2 text-xs text-rose">
-                    <p className="font-semibold">Flagged: overdue this shift</p>
-                    {h.flagReasons.map((r) => (
+                    <p className="font-semibold">
+                      {h.flagReasons?.length ? 'Flagged: overdue this shift' : `Flagged as abnormal by ${name}`}
+                    </p>
+                    {h.flagReasons?.map((r) => (
                       <p key={r}>• {r}</p>
                     ))}
                   </div>
@@ -63,6 +71,14 @@ export function HistoryList() {
           </div>
         )
       })}
+      {hidden > 0 && (
+        <Link
+          to="/history"
+          className="flex min-h-11 w-full items-center justify-center rounded-[18px] text-sm font-semibold text-teal active:bg-white"
+        >
+          Show all ({hidden} more) ›
+        </Link>
+      )}
     </div>
   )
 }

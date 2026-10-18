@@ -1,5 +1,5 @@
 // All app data lives in this browser's localStorage (single-phone demo).
-import { makeSeed, seedCaregivers } from '../data/seed'
+import { makeSeed, seedCaregivers, SEED_VERSION } from '../data/seed'
 import type { AppState } from '../types'
 
 const KEY = 'care-handoff-v1'
@@ -9,6 +9,10 @@ export function loadState(): AppState {
     const raw = localStorage.getItem(KEY)
     if (raw) {
       const saved = JSON.parse(raw) as AppState
+      if (saved.seedVersion !== SEED_VERSION) {
+        // the demo data changed since this was saved: start over with the new demo data
+        return makeSeed()
+      }
       if (!saved.lastDoctorVisit) {
         // saved before the doctor's note existed
         saved.lastDoctorVisit = makeSeed().lastDoctorVisit

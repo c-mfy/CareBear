@@ -5,6 +5,7 @@ import { CheckInPage } from './pages/CheckInPage'
 import { DoctorNotePage } from './pages/DoctorNotePage'
 import { EmergencyPage } from './pages/EmergencyPage'
 import { HandoffPage } from './pages/HandoffPage'
+import { HistoryPage } from './pages/HistoryPage'
 import { HomePage } from './pages/HomePage'
 import { LogPage } from './pages/LogPage'
 import { TimesheetPage } from './pages/TimesheetPage'
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/doctor-note" element={<DoctorNotePage />} />
           <Route path="/timesheet" element={<TimesheetPage />} />
           <Route path="/emergency" element={<EmergencyPage />} />
+          <Route path="/history" element={<HistoryPage />} />
           <Route path="*" element={<HomePage />} />
         </Routes>
       </BrowserRouter>

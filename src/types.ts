@@ -83,6 +83,8 @@ export interface Handoff {
 }
 
 export interface AppState {
+  /** Which version of the demo data this started from (see SEED_VERSION) */
+  seedVersion?: number
   caregivers: Caregiver[]
   currentShift: Shift | null
   logs: LogEntry[]

@@ -109,7 +109,7 @@ export function HomePage() {
         </Section>
 
         <Section title="Patient History">
-          <HistoryList />
+          <HistoryList limit={6} />
         </Section>
 
         <Section

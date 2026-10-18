@@ -56,8 +56,8 @@ Rules:
 | Last G-tube button change date (`2026-08-01`) | `src/data/patient.ts` → `lastGtubeButtonChange` |
 | Caregiver colors for new caregivers | `src/data/patient.ts` → `caregiverColors` |
 | Seed caregivers (Mom, Nurse Alex, Dad) | `src/data/seed.ts` → `seedCaregivers` |
-| Seed history: 5 days of 12-hr shifts (7a–7p Nurse Alex on weekdays / Dad on weekends, 7p–7a Mom) | `src/data/seed.ts` → `makeSeed` |
-| Seed values, notes, and scripted events (one missed vest session, one late Trikafta dose, two pump-alarm nights) | `src/data/seed.ts` → `prescribed`, `vestMinutes`, `makeSeed` |
+| Seed history: 5 days of short care blocks (morning ~6:20–8:20 Mom; evening ~6:05–7:45 Nurse Alex weekdays / Dad weekends; bedtime ~8:50–9:20 Dad weekdays / Mom weekends) | `src/data/seed.ts` → `BLOCKS`, `caregiverFor`, `makeSeed` |
+| Seed values, notes, and scripted events (a missed vest session, a Trikafta dose given late at bedtime, a sick day flagged by hand, pump alarms). Bump `SEED_VERSION` after changing them so browsers reload the demo data | `src/data/seed.ts` |
 | Mock AI text, used when the API fails | `src/lib/ai.ts` → `mockSuggestions`, `mockSummary` |
 | AI prompts | `api/ai.ts` → `buildPrompt` |
 
