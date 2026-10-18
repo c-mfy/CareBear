@@ -5,7 +5,7 @@
 import { getDevice } from '../data/patient'
 import type { AppState, Device, DoctorSummary, FieldValue, LogEntry, Session, Suggestion } from '../types'
 import { mockDoctorSummary, reportForAi, type DoctorReport } from './doctor'
-import { mockRecentSummary, recentForAi, type RecentContext } from './recent'
+import { MAX_SUMMARY_ROWS, mockRecentSummary, recentForAi, SUMMARY_KINDS, type RecentContext, type SummaryRow } from './recent'
 import type { Trends } from './trends'
 import { describeLog, formatTime, logNotes } from './format'
 
@@ -85,7 +85,10 @@ export async function getSuggestions(
         label: suggestion.label as string,
         values: cleanValues(session, suggestion.values || {}),
       }))
-    return list.length > 0 ? list : mockSuggestions(session, recent)
+    if (list.length > 0) {
+      return list
+    }
+    return mockSuggestions(session, recent)
   } catch {
     return mockSuggestions(session, recent)
   }
@@ -136,7 +139,10 @@ export async function getShiftSummary(
       overallNotes,
     })
     const bullets = (data.bullets || []).filter((bullet): bullet is string => typeof bullet === 'string')
-    return bullets.length > 0 ? bullets : mockSummary(logs, overallNotes)
+    if (bullets.length > 0) {
+      return bullets
+    }
+    return mockSummary(logs, overallNotes)
   } catch {
     return mockSummary(logs, overallNotes)
   }
@@ -164,19 +170,40 @@ export async function getDoctorNote(
   return { summary: mockDoctorSummary(report, trends), source: 'auto' }
 }
 
-/** The last-12-hours summary: AI if available, otherwise the local version. `source` says which. */
+/** Keep only well-formed rows from the AI: a known kind and a non-empty title. */
+function cleanRows(raw: unknown[]): SummaryRow[] {
+  const rows: SummaryRow[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') {
+      continue
+    }
+    const r = item as Record<string, unknown>
+    const kind = r.kind as SummaryRow['kind']
+    if (!SUMMARY_KINDS.includes(kind) || typeof r.title !== 'string' || !r.title.trim()) {
+      continue
+    }
+    let detail = ''
+    if (typeof r.detail === 'string') {
+      detail = r.detail.trim()
+    }
+    rows.push({ kind, title: r.title.trim(), detail })
+  }
+  return rows.slice(0, MAX_SUMMARY_ROWS)
+}
+
+/** The last-12-hours summary rows: AI if available, otherwise the local version. `source` says which. */
 export async function getRecentSummary(
   state: AppState,
   ctx: RecentContext,
-): Promise<{ bullets: string[]; source: 'ai' | 'auto' }> {
+): Promise<{ rows: SummaryRow[]; source: 'ai' | 'auto' }> {
   try {
-    const data = await callAi<{ bullets?: unknown[] }>({ task: 'recent', ...recentForAi(state, ctx) })
-    const bullets = (data.bullets || []).filter((bullet): bullet is string => typeof bullet === 'string')
-    if (bullets.length > 0) {
-      return { bullets, source: 'ai' }
+    const data = await callAi<{ rows?: unknown[] }>({ task: 'recent', ...recentForAi(state, ctx) })
+    const rows = cleanRows(data.rows || [])
+    if (rows.length > 0) {
+      return { rows, source: 'ai' }
     }
   } catch {
     // fall through to the local summary
   }
-  return { bullets: mockRecentSummary(state, ctx), source: 'auto' }
+  return { rows: mockRecentSummary(state, ctx), source: 'auto' }
 }

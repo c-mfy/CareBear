@@ -20,22 +20,45 @@ interface SummaryBody {
   overallNotes: string
 }
 
+interface DoctorBody {
+  task: 'doctor'
+  report: Record<string, unknown>
+}
+
 interface RecentBody {
   task: 'recent'
   hours: number
   entries: { caregiver: string; device?: string; session?: string; time: string; done: string; notes: string }[]
+  handoffs: { caregiver: string; shift: string; notes: string; flaggedAbnormal: boolean }[]
+  overdue: string[]
+  upcoming: string[]
 }
 
-type Body = SuggestBody | SummaryBody | RecentBody
+type Body = SuggestBody | SummaryBody | DoctorBody | RecentBody
 
 function buildPrompt(body: Body): string {
   if (body.task === 'recent') {
     return [
       `You summarize home care for a medically complex child so the next caregiver can catch up fast.`,
       `Everything logged in the past ${body.hours} hours, by any caregiver: ${JSON.stringify(body.entries)}.`,
-      `Write 3 to 5 short, plain bullets. Put anything missed, abnormal, or noted first. Mention who did it when useful.`,
-      `Do not invent anything not in the entries.`,
-      `Respond ONLY with JSON: {"bullets":["..."]}`,
+      `Shift handoffs in that time: ${JSON.stringify(body.handoffs)}.`,
+      `Missed or late treatments: ${JSON.stringify(body.overdue)}. Still due today: ${JSON.stringify(body.upcoming)}.`,
+      `Write 3 to 5 rows for a phone screen. Each row has a "kind", a bold "title" (at most 6 words) and a small "detail" line (at most 8 words).`,
+      `Kinds: "missed" = missed, late or flagged abnormal; "done" = care that was completed (group routine care into ONE row, e.g. title "All 6 treatments on time", detail "Vest, nebulizer, Trikafta, feeds"); "handoff" = a shift handoff (title "Nurse Alex handed off", detail "7:05 PM · no flags"); "note" = something a caregiver noted (title = the observation, detail "Noted by Mom · 7:40 PM"); "quiet" = nothing was logged; "next" = what is due next (title "Next up: <device>", detail "<session> at <time>").`,
+      `Order: missed first, then done, handoff, note, and "next" last. Use at most one "missed" row unless a visit was flagged. Mention who did it when useful.`,
+      `Do not invent anything not in the data.`,
+      `Respond ONLY with JSON: {"rows":[{"kind":"...","title":"...","detail":"..."}]}`,
+    ].join('\n')
+  }
+  if (body.task === 'doctor') {
+    return [
+      `You write the summary at the top of a home care report for the pediatric doctor of a medically complex child, covering home care since the last visit.`,
+      `Home care data (already computed from caregiver logs, including a day-by-day series): ${JSON.stringify(body.report)}.`,
+      `Write a brief, readable summary a busy doctor can take in at a glance. Detailed tables and charts follow it, so do NOT list every event.`,
+      `"overview": 2 to 3 plain sentences on how home care went overall in this period.`,
+      `"trends": 3 to 5 short bullets on patterns across the days: what is consistent, what is getting better or worse, what recurs (for example the same dose being late, feeds falling short on certain nights, symptoms clustering on the same days). Lead with anything clinically concerning. Mention dates or counts only when they make the pattern clear.`,
+      `Do not invent symptoms, doses, or numbers that are not in the data. Do not diagnose or recommend treatment.`,
+      `Respond ONLY with JSON: {"overview":"...","trends":["..."]}`,
     ].join('\n')
   }
   if (body.task === 'suggest') {
@@ -65,7 +88,8 @@ export async function POST(request: Request): Promise<Response> {
   if (!key) {
     return Response.json({ error: 'GEMINI_API_KEY not set' }, { status: 500 })
   }
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+  // trim: a pasted env value with a stray space, newline or quotes otherwise turns into a 404 "model not found"
+  const model = (process.env.GEMINI_MODEL || '').trim().replace(/^["']|["']$/g, '') || 'gemini-2.5-flash'
 
   let body: Body
   try {
@@ -73,7 +97,7 @@ export async function POST(request: Request): Promise<Response> {
   } catch {
     return Response.json({ error: 'Bad JSON' }, { status: 400 })
   }
-  if (body.task !== 'suggest' && body.task !== 'summary' && body.task !== 'recent') {
+  if (!['suggest', 'summary', 'doctor', 'recent'].includes(body.task)) {
     return Response.json({ error: 'Unknown task' }, { status: 400 })
   }
 
@@ -86,48 +110,23 @@ export async function POST(request: Request): Promise<Response> {
     }),
   })
   if (!res.ok) {
-    return Response.json({ error: `Gemini error ${res.status}` }, { status: 502 })
+    // Pass Google's reason along (e.g. which quota was hit, or which model name wasn't found)
+    let reason = ''
+    try {
+      const err = await res.json()
+      reason = String(err?.error?.message || '').slice(0, 300)
+    } catch {
+      // no JSON body
+    }
+    console.error(`Gemini error ${res.status} (model ${model}):`, reason)
+    return Response.json({ error: `Gemini error ${res.status} (model "${model}"): ${reason}` }, { status: 502 })
   }
 
   const data = await res.json()
-  const parsed = extractJson(data)
-  if (parsed === null) {
-    // Log what came back so it shows in Vercel → Logs
-    console.error('Model did not return JSON:', JSON.stringify(data).slice(0, 1000))
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text
+  try {
+    return Response.json(JSON.parse(text))
+  } catch {
     return Response.json({ error: 'Model did not return JSON' }, { status: 502 })
-  }
-  return Response.json(parsed)
-}
-
-/**
- * Pull a JSON object out of Gemini's reply. Handles:
- * - text split across several parts, or "thought" parts before the answer
- * - ```json code fences
- * - extra words before/after the object
- */
-function extractJson(data: unknown): unknown {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const parts: any[] = (data as any)?.candidates?.[0]?.content?.parts || []
-  const text = parts
-    .filter((p) => typeof p?.text === 'string' && p.thought !== true)
-    .map((p) => p.text)
-    .join('')
-  if (!text) {
-    return null
-  }
-  try {
-    return JSON.parse(text)
-  } catch {
-    // fall through to the cleanup below
-  }
-  const start = text.indexOf('{')
-  const end = text.lastIndexOf('}')
-  if (start === -1 || end <= start) {
-    return null
-  }
-  try {
-    return JSON.parse(text.slice(start, end + 1))
-  } catch {
-    return null
   }
 }

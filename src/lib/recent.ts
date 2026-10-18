@@ -1,6 +1,7 @@
 // "Last 12 hours" summary at the top of the home page: everything any caregiver logged in the window,
-// handoffs that ended in it, what went overdue, and what's due next. The AI condenses it; mockRecentSummary
-// is the instant local version (shown first, and kept if the AI is unavailable).
+// handoffs that ended in it, what went overdue, and what's due next. It's shown as a few rows (icon, bold
+// title, small detail). The AI writes the rows; mockRecentSummary is the instant local version (shown
+// first, and kept if the AI is unavailable).
 
 import { getDevice } from '../data/patient'
 import type { AppState, Handoff, LogEntry } from '../types'
@@ -17,9 +18,26 @@ export interface RecentContext {
   overdue: string[]
   /** e.g. "Trikafta · Evening dose at 7:30 PM" */
   upcoming: string[]
+  /** The next task still due today, for the "Next up" row */
+  next: { title: string; label: string; time: string } | null
   /** Caregivers who logged or handed off in the window, in order of first activity */
   caregiverIds: string[]
 }
+
+/** What a summary row is about; picks its icon and color. */
+export type SummaryKind = 'done' | 'missed' | 'handoff' | 'note' | 'next' | 'quiet'
+
+export const SUMMARY_KINDS: SummaryKind[] = ['done', 'missed', 'handoff', 'note', 'next', 'quiet']
+
+/** One row of the summary card, e.g. { kind: 'next', title: 'Next up: Nebulizer', detail: 'Evening session at 6:15 PM' } */
+export interface SummaryRow {
+  kind: SummaryKind
+  title: string
+  detail: string
+}
+
+/** Most rows the card shows */
+export const MAX_SUMMARY_ROWS = 5
 
 export function buildRecentContext(state: AppState, now: Date = new Date()): RecentContext {
   const since = new Date(now.getTime() - RECENT_HOURS * 3600 * 1000)
@@ -32,9 +50,13 @@ export function buildRecentContext(state: AppState, now: Date = new Date()): Rec
   const overdue = sessionOccurrences(state.logs, since, now)
     .filter((o) => o.status !== 'on-time')
     .map((o) => describeOverdue({ title: o.title, label: o.label, scheduled: o.scheduled, minutesLate: o.offsetMinutes }))
-  const upcoming = buildTodayTasks(state.logs, now)
-    .filter((t) => !t.done && t.overdueMinutes === 0 && t.time)
-    .map((t) => `${t.title} · ${t.label} at ${formatScheduled(t.time)}`)
+  const upcomingTasks = buildTodayTasks(state.logs, now).filter((t) => !t.done && t.overdueMinutes === 0 && t.time)
+  const upcoming = upcomingTasks.map((t) => `${t.title} · ${t.label} at ${formatScheduled(t.time)}`)
+  let next: RecentContext['next'] = null
+  if (upcomingTasks.length > 0) {
+    const t = upcomingTasks[0]
+    next = { title: t.title, label: t.label, time: formatScheduled(t.time) }
+  }
 
   const caregiverIds: string[] = []
   for (const id of [...handoffs.map((h) => h.caregiverId), ...logs.map((l) => l.caregiverId)]) {
@@ -45,7 +67,7 @@ export function buildRecentContext(state: AppState, now: Date = new Date()): Rec
   if (state.currentShift && !caregiverIds.includes(state.currentShift.caregiverId)) {
     caregiverIds.push(state.currentShift.caregiverId)
   }
-  return { since, logs, handoffs, overdue, upcoming, caregiverIds }
+  return { since, logs, handoffs, overdue, upcoming, next, caregiverIds }
 }
 
 /** Changes only when the underlying data does, so the AI isn't re-asked every minute. */
@@ -88,79 +110,92 @@ export function recentForAi(state: AppState, ctx: RecentContext) {
   }
 }
 
-/** One entry, compact: "Vest 30 min", "Feeding pump 900 mL", "Trikafta NOT done: Dose given". */
-function shortLog(log: LogEntry): string {
-  const device = getDevice(log.deviceId)
-  const session = device?.sessions.find((s) => s.id === log.sessionId)
-  if (!device || !session) {
-    return 'Unknown entry'
-  }
-  const numbers: string[] = []
-  const missed: string[] = []
-  for (const field of session.fields) {
-    const value = log.values[field.id]
-    if (field.type === 'number' && typeof value === 'number') {
-      numbers.push(`${value}${field.unit ? ` ${field.unit}` : ''}`)
-    } else if (field.type === 'check' && value !== true) {
-      missed.push(field.label)
+/** Device names in first-seen order, without repeats: "Vest, Nebulizer, Trikafta" */
+function deviceList(names: (string | undefined)[]): string {
+  const unique: string[] = []
+  for (const name of names) {
+    if (name && !unique.includes(name)) {
+      unique.push(name)
     }
   }
-  let text = device.name
-  if (numbers.length > 0) {
-    text += ` ${numbers.join(', ')}`
+  return unique.join(', ')
+}
+
+function plural(count: number, one: string, many: string): string {
+  if (count === 1) {
+    return `${count} ${one}`
   }
-  if (missed.length > 0) {
-    text += ` (NOT done: ${missed.join(', ')})`
+  return `${count} ${many}`
+}
+
+/** Shorten a caregiver note so it fits a row title. */
+function shortNote(text: string): string {
+  const clean = text.trim().replace(/\.$/, '')
+  if (clean.length <= 48) {
+    return clean
   }
-  return text
+  return `${clean.slice(0, 45).trim()}…`
 }
 
 /**
- * Local summary, used until (or instead of) the AI one: what needs attention, one line per visit saying
- * what was done, caregiver notes, and what's due next.
+ * Local summary rows, used until (or instead of) the AI ones. Order: what needs attention, what got done,
+ * handoffs, caregiver notes, then what's due next.
  */
-export function mockRecentSummary(state: AppState, ctx: RecentContext): string[] {
-  const bullets: string[] = []
-  if (ctx.overdue.length > 0) {
-    bullets.push(`Needs attention: ${ctx.overdue.join('; ')}.`)
-  }
-  for (const h of ctx.handoffs) {
-    if (h.flagged && !h.flagReasons?.length) {
-      bullets.push(`${nameOf(state, h.caregiverId)} flagged their visit as abnormal.`)
-    }
-    if (h.overallNotes.trim()) {
-      bullets.push(`${nameOf(state, h.caregiverId)}'s handoff note: "${h.overallNotes.trim()}"`)
-    }
-  }
+export function mockRecentSummary(state: AppState, ctx: RecentContext): SummaryRow[] {
+  const rows: SummaryRow[] = []
 
-  // One line per visit: finished visits in the window, then whoever is on shift now
-  const visits = ctx.handoffs.map((h) => ({
-    who: nameOf(state, h.caregiverId),
-    when: `${formatTime(h.start)} – ${formatTime(h.end)}`,
-    logs: ctx.logs.filter((l) => h.logIds.includes(l.id)),
-  }))
-  if (state.currentShift) {
-    const shift = state.currentShift
-    visits.push({
-      who: nameOf(state, shift.caregiverId),
-      when: `since ${formatTime(shift.start)} (on shift)`,
-      logs: ctx.logs.filter((l) => l.caregiverId === shift.caregiverId && l.timestamp >= shift.start),
+  if (ctx.overdue.length > 0) {
+    // overdue lines start with the device name: "Vest · Evening session: not done (due 6:45 PM)"
+    rows.push({
+      kind: 'missed',
+      title: `${plural(ctx.overdue.length, 'treatment', 'treatments')} missed or late`,
+      detail: deviceList(ctx.overdue.map((line) => line.split(' · ')[0])),
     })
   }
-  for (const v of visits) {
-    const done = v.logs.length > 0 ? v.logs.map(shortLog).join(' · ') : 'nothing logged'
-    bullets.push(`${v.who}, ${v.when}: ${done}.`)
-  }
-  if (visits.length === 0) {
-    bullets.push(`Nothing logged in the last ${RECENT_HOURS} hours.`)
+  for (const h of ctx.handoffs) {
+    if (h.flagged) {
+      let detail = 'Marked as abnormal'
+      if (h.overallNotes.trim()) {
+        detail = shortNote(h.overallNotes)
+      }
+      rows.push({ kind: 'missed', title: `${nameOf(state, h.caregiverId)} flagged their visit`, detail })
+    }
   }
 
-  const noted = ctx.logs.filter((l) => logNotes(l) && logNotes(l).toLowerCase() !== 'no issues.').slice(-3)
+  if (ctx.logs.length > 0) {
+    let title = `${plural(ctx.logs.length, 'treatment', 'treatments')} logged`
+    if (ctx.overdue.length === 0) {
+      title = `All ${plural(ctx.logs.length, 'treatment', 'treatments')} on time`
+    }
+    rows.push({ kind: 'done', title, detail: deviceList(ctx.logs.map((l) => getDevice(l.deviceId)?.name)) })
+  }
+
+  for (const h of ctx.handoffs) {
+    let flags = 'no flags'
+    if (h.flagged) {
+      flags = 'flagged'
+    }
+    rows.push({ kind: 'handoff', title: `${nameOf(state, h.caregiverId)} handed off`, detail: `${formatTime(h.end)} · ${flags}` })
+  }
+
+  if (ctx.logs.length === 0 && ctx.handoffs.length === 0) {
+    rows.push({ kind: 'quiet', title: 'No logs or handoffs', detail: `Nothing recorded in the last ${RECENT_HOURS} hours` })
+  }
+
+  const noted = ctx.logs.filter((l) => logNotes(l) && logNotes(l).toLowerCase() !== 'no issues.').slice(-2)
   for (const log of noted) {
-    bullets.push(`${getDevice(log.deviceId)?.name}, ${formatTime(log.timestamp)} (${nameOf(state, log.caregiverId)}): "${logNotes(log)}"`)
+    rows.push({
+      kind: 'note',
+      title: shortNote(logNotes(log)),
+      detail: `Noted by ${nameOf(state, log.caregiverId)} · ${formatTime(log.timestamp)}`,
+    })
   }
-  if (ctx.upcoming.length > 0) {
-    bullets.push(`Next up: ${ctx.upcoming.join(', ')}.`)
+
+  // Keep room for "Next up" at the end
+  const limit = MAX_SUMMARY_ROWS - 1
+  const trimmed = rows.slice(0, limit)
+  if (ctx.next) {
+    trimmed.push({ kind: 'next', title: `Next up: ${ctx.next.title}`, detail: `${ctx.next.label} at ${ctx.next.time}` })
   }
-  return bullets
+  return trimmed
 }

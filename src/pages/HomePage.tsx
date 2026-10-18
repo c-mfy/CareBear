@@ -12,6 +12,7 @@ import { formatMinutes } from '../lib/format'
 import { useStore } from '../lib/store'
 import { buildTodayTasks } from '../lib/tasks'
 import { useNow } from '../lib/useNow'
+import { RECENT_HOURS } from '../lib/recent'
 
 /** Single scrolling page, laid out like the Figma home screen. */
 export function HomePage() {
@@ -96,7 +97,7 @@ export function HomePage() {
           </div>
         )}
 
-        <Section title="Summary">
+        <Section title="Summary" titleExtra={<span className="text-xs font-black text-sea">Last {RECENT_HOURS} hours</span>}>
           <SummaryCard />
         </Section>
 
