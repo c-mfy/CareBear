@@ -1,15 +1,193 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Care Handoff</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+@import "tailwindcss";
+
+/*
+  THEME — the team palette. Change a hex here to restyle the whole app.
+  Each color becomes Tailwind classes, e.g. --color-teal -> bg-teal, text-teal, border-teal.
+
+    blossom #fff5fc page background (from the Figma)
+    lilac  #f7f5ff  soft fills
+    mist   #e1f5f4  soft teal background (log screen, tags)
+    aqua   #b9f1ee  borders, "due" badges
+    sea    #6ebec1  placeholder text, dashed lines
+    teal   #1bb3b0  primary actions, checked boxes
+    blush  #f7c2dd  soft pink fills
+    rose   #f392ba  pink accents, notes
+    cocoa  #755339  secondary text
+    brown  #40312a  main text, dark bar
+    white  #ffffff  cards
+*/
+@theme {
+  --color-blossom: #fff5fc;
+  --color-lilac: #f7f5ff;
+  --color-mist: #e1f5f4;
+  --color-aqua: #b9f1ee;
+  --color-sea: #6ebec1;
+  --color-teal: #1bb3b0;
+  --color-blush: #f7c2dd;
+  --color-rose: #f392ba;
+  --color-cocoa: #755339;
+  --color-brown: #40312a;
+
+  --font-display: Poppins, system-ui, sans-serif;
+  --font-body: Lato, system-ui, sans-serif;
+}
+
+html,
+body {
+  background: var(--color-blossom);
+  color: var(--color-brown);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-sea);
+}
+
+/* ---------- FullCalendar, restyled to the palette ---------- */
+.fc {
+  font-size: 0.7rem;
+  --fc-border-color: var(--color-mist);
+  --fc-today-bg-color: var(--color-blossom);
+  --fc-now-indicator-color: var(--color-rose);
+  --fc-page-bg-color: #ffffff;
+  --fc-button-bg-color: var(--color-mist);
+  --fc-button-border-color: var(--color-mist);
+  --fc-button-text-color: var(--color-brown);
+  --fc-button-hover-bg-color: var(--color-aqua);
+  --fc-button-hover-border-color: var(--color-aqua);
+  --fc-button-active-bg-color: var(--color-sea);
+  --fc-button-active-border-color: var(--color-sea);
+}
+.fc .fc-toolbar-title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.fc .fc-button {
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+}
+.fc .fc-col-header-cell-cushion,
+.fc .fc-timegrid-slot-label-cushion {
+  color: var(--color-cocoa);
+  font-weight: 600;
+}
+.fc .fc-timegrid-slot {
+  height: 1.6rem;
+}
+.fc .fc-event {
+  border-radius: 6px;
+  cursor: pointer;
+}
+/* Sessions not done yet: gray, dashed */
+.fc .fc-planned {
+  border-style: dashed;
+}
+.fc .fc-planned .fc-event-title {
+  font-weight: 500;
+}
+.fc .fc-event-title {
+  font-weight: 600;
+}
+
+/* ---------- Today's Care: swapping a task card into the big spot ---------- */
+::view-transition-group(*) {
+  animation-duration: 380ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* the rest of the page stays still; only the task cards move */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+/* ---------- Welcome scene after check-in (WelcomeOverlay) ---------- */
+.welcome-in {
+  animation: welcome-fade-in 250ms ease-out both;
+}
+.welcome-out {
+  animation: welcome-fade-out 400ms ease-in forwards;
+}
+/* Waving Kuma: pops in, three happy hops with a tilt, then keeps waving side to side */
+.welcome-kuma {
+  transform-origin: 50% 90%;
+  animation:
+    welcome-pop 450ms cubic-bezier(0.3, 1.5, 0.6, 1),
+    welcome-hop 800ms ease-in-out 450ms 3,
+    welcome-wave 1s ease-in-out 2850ms infinite;
+}
+.welcome-text {
+  animation: welcome-rise 500ms ease-out 500ms both;
+}
+.welcome-hint {
+  animation: welcome-fade-in 500ms ease-out 1500ms both;
+}
+.welcome-sparkle {
+  animation: welcome-twinkle 1.2s ease-in-out infinite;
+}
+
+@keyframes welcome-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes welcome-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes welcome-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes welcome-hop {
+  0% { transform: translateY(0) scale(1.05, 0.94); }
+  40% { transform: translateY(-34px) rotate(-7deg); }
+  60% { transform: translateY(-34px) rotate(7deg); }
+  90% { transform: translateY(0) scale(1.04, 0.96); }
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes welcome-wave {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+@keyframes welcome-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes welcome-twinkle {
+  0%, 100% { transform: scale(0.6); opacity: 0.3; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-kuma, .welcome-sparkle { animation: none; }
+}
+
+/* ---------- Task-complete scene (CelebrateOverlay) ---------- */
+/* proud Kuma: pops in, does two happy hops, then sways side to side */
+.celebrate-kuma {
+  transform-origin: 50% 100%;
+  animation:
+    welcome-pop 400ms cubic-bezier(0.3, 1.5, 0.6, 1),
+    celebrate-hop 700ms ease-in-out 400ms 2,
+    welcome-wave 900ms ease-in-out 1800ms infinite;
+}
+.celebrate-sub {
+  animation: welcome-fade-in 400ms ease-out 450ms both;
+}
+@keyframes celebrate-hop {
+  0% { transform: translateY(0) scale(1.06, 0.92); }
+  40% { transform: translateY(-36px) rotate(-6deg); }
+  60% { transform: translateY(-36px) rotate(6deg); }
+  90% { transform: translateY(0) scale(1.04, 0.95); }
+  100% { transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .celebrate-kuma { animation: none; }
+}
