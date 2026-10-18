@@ -53,7 +53,7 @@ export function HistoryList({ limit }: { limit?: number }) {
           return (
             <li key={h.id} className="border-b border-blush">
               <button onClick={() => toggle(h.id)} className="flex min-h-9 w-full items-center gap-2 pr-2 pl-[9px] text-left">
-                <span className="flex flex-1 items-center gap-1.5 font-display text-base font-bold">
+                <span className="flex flex-1 items-center gap-1.5 font-display text-base font-medium">
                   {name}
                   {h.flagged && <FlagMark />}
                 </span>
