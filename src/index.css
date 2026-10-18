@@ -91,3 +91,21 @@ textarea::placeholder {
 .fc .fc-event-title {
   font-weight: 600;
 }
+
+/* ---------- Today's Care: swapping a task card into the big spot ---------- */
+::view-transition-group(*) {
+  animation-duration: 380ms;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* the rest of the page stays still; only the task cards move */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

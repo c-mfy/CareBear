@@ -66,6 +66,7 @@ export function HomePage() {
           <Kuma mood={mood} className="relative z-10 mt-[31px] mr-[25px]" />
         </div>
 
+        {/* Status bar under Kuma: pink with the late tasks, or teal when nothing is overdue */}
         {overdue.length > 0 && (
           <div role="alert" className="-mt-[35px] rounded-[22px] bg-rose px-[21px] pt-[13px] pb-[14px] text-white">
             <p className="text-xl leading-tight font-black uppercase">{overdueTitle}</p>
@@ -86,6 +87,12 @@ export function HomePage() {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+        {overdue.length === 0 && (
+          <div role="status" className="-mt-[35px] rounded-[22px] bg-sea px-[21px] pt-[13px] pb-[14px] text-white">
+            <p className="text-xl leading-tight font-black uppercase">No overdue tasks</p>
+            <p className="mt-1.5 pl-3 text-xs font-bold">Everything due so far is done.</p>
           </div>
         )}
 
